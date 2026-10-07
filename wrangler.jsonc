@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mapa-povo-de-santo",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": true,
+
+  // Compila Tailwind e copia Leaflet/Lucide para public/ antes de dev/deploy.
+  "build": { "command": "npm run build" },
+
+  // Site estático. Requisições que não casam com um arquivo (ex.: /api/*)
+  // seguem para o Worker.
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+
+  // Banco de dados Cloudflare D1. Após `npx wrangler d1 create mapa-povo-de-santo`,
+  // cole aqui o database_id exibido pelo comando.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mapa-povo-de-santo",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+
+  "observability": { "enabled": true }
+
+  // Secrets (não ficam neste arquivo):
+  //   npx wrangler secret put ADMIN_TOKEN
+  //   npx wrangler secret put ACESSO_RESTRITO_HASH
+  // Em desenvolvimento local, use o arquivo .dev.vars (veja .dev.vars.example).
+}

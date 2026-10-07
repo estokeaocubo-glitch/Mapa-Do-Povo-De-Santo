@@ -1,0 +1,19 @@
+[
+  {
+    "_comentario": "MODELO. Copie para db/seed-real.json (fora do git) e substitua por dados reais. Apague esta linha.",
+    "nome_casa": "Nome da Casa (exemplo)",
+    "vertente": "Misto/Outros",
+    "nacao_linha": "Candomblé e Umbanda",
+    "lideranca_nome_religioso": "Nome da liderança",
+    "distrito": "1º Distrito - Petrópolis (Centro)",
+    "bairro": "Centro",
+    "endereco_completo": null,
+    "lat_real": -22.51,
+    "lng_real": -43.178,
+    "nivel_privacidade": "Aproximado",
+    "contato_restrito": true,
+    "whatsapp_contato": "5524900000000",
+    "status_moderacao": "Aprovado",
+    "consentimento_lgpd_em": "2026-10-01"
+  }
+]

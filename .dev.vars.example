@@ -1,0 +1,5 @@
+# Copie para .dev.vars (ignorado pelo git) para rodar `npm run dev`.
+# Token do painel de moderação. Gere com: openssl rand -hex 32
+ADMIN_TOKEN=
+# Hash da senha que libera contatos restritos. Gere com: npm run hash-senha
+ACESSO_RESTRITO_HASH=

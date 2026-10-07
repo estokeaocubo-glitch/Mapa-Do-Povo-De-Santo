@@ -2,27 +2,29 @@
   "name": "mapa-do-povo-de-santo",
   "version": "0.1.0",
   "private": true,
-  "description": "Mapa interativo, catálogo histórico e censo comunitário do Povo de Santo de Petrópolis/RJ",
+  "description": "Mapa interativo, catálogo histórico e censo comunitário do Povo de Santo de Petrópolis/RJ (Cloudflare Workers + D1)",
   "type": "module",
   "engines": {
-    "node": ">=20.12"
+    "node": ">=20"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "prestart": "npm run build",
-    "start": "node server.js",
-    "db:schema": "psql \"$DATABASE_URL\" -f db/schema.sql",
-    "hash-senha": "node scripts/hash-senha.mjs"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "hash-senha": "node scripts/hash-senha.mjs",
+    "db:local": "wrangler d1 execute mapa-povo-de-santo --local --file db/schema.sql && node scripts/gerar-seed.mjs db/seed-ficticio.json db/gerado/seed-ficticio.sql && wrangler d1 execute mapa-povo-de-santo --local --file db/gerado/seed-ficticio.sql",
+    "db:schema:remote": "wrangler d1 execute mapa-povo-de-santo --remote --file db/schema.sql",
+    "db:seed-ficticio:remote": "node scripts/gerar-seed.mjs db/seed-ficticio.json db/gerado/seed-ficticio.sql && wrangler d1 execute mapa-povo-de-santo --remote --file db/gerado/seed-ficticio.sql",
+    "db:seed-real:remote": "node scripts/gerar-seed.mjs db/seed-real.json db/gerado/seed-real.sql && wrangler d1 execute mapa-povo-de-santo --remote --file db/gerado/seed-real.sql"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
-    "lucide": "^0.460.0",
-    "pg": "^8.23.1"
+    "lucide": "^0.460.0"
   },
   "devDependencies": {
-    "tailwindcss": "^3.4.19"
+    "tailwindcss": "^3.4.19",
+    "wrangler": "^4.148.0"
   },
   "license": "MIT"
 }

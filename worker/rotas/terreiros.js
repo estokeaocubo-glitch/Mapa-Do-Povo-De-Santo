@@ -11,10 +11,9 @@
 //  3. Contatos com contato_restrito saem como null (ver /api/desbloquear).
 //  4. assertSemCamposPrivados() aborta a resposta se algo privado escapar.
 // =============================================================================
-import { getDb } from '../lib/db.js';
-import { getQuery, methodNotAllowed, sendJson, withErrors } from '../lib/http.js';
-import { assertSemCamposPrivados, toPublicTerreiro } from '../lib/privacy.js';
-import { carregarEstatisticas } from '../lib/stats.js';
+import { assertSemCamposPrivados, toPublicTerreiro } from '../../lib/privacy.js';
+import { carregarEstatisticas } from '../../lib/stats.js';
+import { CACHE_PUBLICO, json, metodoNaoPermitido } from '../http.js';
 
 const SQL_PUBLICO = `
   SELECT id, slug, nome_casa, categoria, vertente, nacao_linha, orixa_guia_regente,
@@ -24,27 +23,23 @@ const SQL_PUBLICO = `
          contato_restrito
   FROM vw_terreiros_publicos`;
 
-export default withErrors(async (req, res) => {
-  if (req.method !== 'GET') return methodNotAllowed(res, ['GET']);
+export async function terreiros(request, env, url) {
+  if (request.method !== 'GET') return metodoNaoPermitido(['GET']);
 
-  const db = await getDb();
-  const slug = getQuery(req).get('slug');
-  const cache = { 'Cache-Control': 'public, max-age=60, s-maxage=300' };
-
+  const slug = url.searchParams.get('slug');
   if (slug) {
-    if (!/^[a-z0-9-]{1,180}$/.test(slug)) return sendJson(res, 400, { erro: 'Slug inválido.' });
-    const { rows } = await db.query(`${SQL_PUBLICO} WHERE slug = $1 LIMIT 1`, [slug]);
-    const terreiro = toPublicTerreiro(rows[0]);
-    if (!terreiro) return sendJson(res, 404, { erro: 'Casa não encontrada.' });
+    if (!/^[a-z0-9-]{1,180}$/.test(slug)) return json(400, { erro: 'Slug inválido.' });
+    const row = await env.DB.prepare(`${SQL_PUBLICO} WHERE slug = ?1 LIMIT 1`).bind(slug).first();
+    const terreiro = toPublicTerreiro(row);
+    if (!terreiro) return json(404, { erro: 'Casa não encontrada.' });
     assertSemCamposPrivados([terreiro]);
-    return sendJson(res, 200, { terreiro }, cache);
+    return json(200, { terreiro }, CACHE_PUBLICO);
   }
 
-  const [{ rows }, estatisticas] = await Promise.all([
-    db.query(`${SQL_PUBLICO} ORDER BY nome_casa`),
-    carregarEstatisticas(db),
+  const [{ results }, estatisticas] = await Promise.all([
+    env.DB.prepare(`${SQL_PUBLICO} ORDER BY nome_casa`).all(),
+    carregarEstatisticas(env.DB),
   ]);
-
-  const terreiros = assertSemCamposPrivados(rows.map(toPublicTerreiro).filter(Boolean));
-  sendJson(res, 200, { terreiros, estatisticas, gerado_em: new Date().toISOString() }, cache);
-});
+  const lista = assertSemCamposPrivados(results.map(toPublicTerreiro).filter(Boolean));
+  return json(200, { terreiros: lista, estatisticas, gerado_em: new Date().toISOString() }, CACHE_PUBLICO);
+}

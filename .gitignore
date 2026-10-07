@@ -1,7 +1,8 @@
 node_modules/
 public/vendor/
 public/assets/app.css
-.env
-# Dados reais das casas (nomes, telefones): carregue direto no banco, nunca no git.
-db/seed-real.sql
-.vercel
+.wrangler/
+.dev.vars
+# Dados reais das casas (nomes, telefones): nunca no git.
+db/seed-real.json
+db/gerado/
