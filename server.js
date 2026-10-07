@@ -2,6 +2,7 @@
 // Serve /public e encaminha /api/<rota> para os handlers em /api — os mesmos
 // arquivos usados como funções serverless no deploy (Vercel).
 import { createServer } from 'node:http';
+import { existsSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,12 +11,16 @@ import terreiros from './api/terreiros.js';
 import estatisticas from './api/estatisticas.js';
 import cadastro from './api/cadastro.js';
 import admin from './api/admin.js';
+import desbloquear from './api/desbloquear.js';
 import { getDb } from './lib/db.js';
 import { SECURITY_HEADERS } from './lib/security-headers.js';
 
+// Carrega variáveis do arquivo .env (Node ≥ 20.12), se existir.
+if (existsSync('.env')) process.loadEnvFile?.('.env');
+
 const ROOT = resolve(fileURLToPath(new URL('./public', import.meta.url)));
 const PORT = Number(process.env.PORT || 3000);
-const ROUTES = { '/api/terreiros': terreiros, '/api/estatisticas': estatisticas, '/api/cadastro': cadastro, '/api/admin': admin };
+const ROUTES = { '/api/terreiros': terreiros, '/api/estatisticas': estatisticas, '/api/cadastro': cadastro, '/api/admin': admin, '/api/desbloquear': desbloquear };
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',

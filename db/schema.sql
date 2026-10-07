@@ -83,7 +83,11 @@ CREATE TABLE terreiros (
   acoes_sociais             TEXT[] NOT NULL DEFAULT '{}',
   whatsapp_contato          VARCHAR(20),
   instagram_url             VARCHAR(200),
-  status_moderacao          moderacao_enum NOT NULL DEFAULT 'Pendente',
+  -- true = WhatsApp, Instagram e endereço só são liberados por
+  -- POST /api/desbloquear (senha verificada no servidor). Nunca saem na
+  -- listagem pública do mapa.
+  contato_restrito          BOOLEAN NOT NULL DEFAULT false,
+  status_moderacao         moderacao_enum NOT NULL DEFAULT 'Pendente',
   consentimento_lgpd_em     TIMESTAMPTZ,      -- prova do consentimento (LGPD art. 11, I)
   created_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -151,7 +155,7 @@ CREATE TRIGGER trg_terreiros_coordenada_publica
 -- =============================================================================
 -- VIEW PÚBLICA — a ÚNICA fonte da listagem do mapa.
 -- Não contém lat_real, lng_real; endereço só aparece quando a casa escolheu
--- 'Exato'. Casas ocultas e não aprovadas nem chegam a existir aqui.
+-- 'Exato'; contatos de casas com contato_restrito saem como NULL. Casas ocultas e não aprovadas nem chegam a existir aqui.
 -- =============================================================================
 CREATE VIEW vw_terreiros_publicos AS
 SELECT
@@ -159,7 +163,10 @@ SELECT
   lideranca_titulo, lideranca_nome_religioso, ano_fundacao, distrito, bairro,
   CASE WHEN nivel_privacidade = 'Exato' THEN endereco_completo END AS endereco_publico,
   lat_publica, lng_publica, nivel_privacidade,
-  historia_resumo, calendario_giras, acoes_sociais, whatsapp_contato, instagram_url,
+  historia_resumo, calendario_giras, acoes_sociais,
+  CASE WHEN NOT contato_restrito THEN whatsapp_contato END AS whatsapp_contato,
+  CASE WHEN NOT contato_restrito THEN instagram_url END    AS instagram_url,
+  contato_restrito,
   created_at
 FROM terreiros
 WHERE status_moderacao = 'Aprovado'
@@ -289,5 +296,8 @@ INSERT INTO terreiros (
   '[{"dia":"Quinta-feira","horario":"20:00","tipo":"Gira de Preto-Velho","frequencia":"Semanal"}]',
   ARRAY['Cesta Básica'], '5524999990008', NULL, 'Pendente', now()
 );
+
+-- Exemplo de CONTATO RESTRITO: WhatsApp e endereço só com a senha de acesso.
+UPDATE terreiros SET contato_restrito = true WHERE slug = 'ile-ase-ogun-akoro-efon';
 
 COMMIT;

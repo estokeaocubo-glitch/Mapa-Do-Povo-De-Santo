@@ -1,5 +1,6 @@
 // Drawer lateral (desktop) / bottom sheet (mobile) com a ficha completa da casa.
 import { MENSAGEM_WHATSAPP, MENSAGEM_WHATSAPP_ENDERECO, RAIO_APROXIMADO_M, SEGMENTOS, segmentoDe } from './constants.js';
+import { api } from './api.js';
 import { esc, formatarTelefone, icones, linkInstagramSeguro, linkWhatsapp } from './utils.js';
 
 const drawer = () => document.getElementById('drawer');
@@ -11,6 +12,7 @@ export function abrirDetalhe(casa, { aoFechar }) {
   el.classList.add('aberto');
   el.setAttribute('aria-hidden', 'false');
   el.querySelector('[data-fechar-drawer]').addEventListener('click', aoFechar);
+  el.querySelector('#form-desbloqueio')?.addEventListener('submit', (e) => desbloquear(e, casa));
   el.focus({ preventScroll: true });
 }
 
@@ -18,6 +20,47 @@ export function fecharDetalhe() {
   const el = drawer();
   el.classList.remove('aberto');
   el.setAttribute('aria-hidden', 'true');
+}
+
+// Contato protegido: a senha é verificada no servidor; só então os dados chegam.
+function htmlDesbloqueio() {
+  return `
+    <section class="mt-6 rounded-2xl border border-ouro/30 bg-ouro/5 p-4" id="bloco-restrito">
+      <p class="flex items-center gap-2 text-sm font-semibold"><i data-lucide="lock" class="h-4 w-4 text-ouro"></i> Contato protegido</p>
+      <p class="mt-1 text-xs leading-relaxed text-stone-400">O WhatsApp e o endereço desta casa só são liberados com a senha de segurança da rede.</p>
+      <form id="form-desbloqueio" class="mt-3 flex gap-2">
+        <label class="sr-only" for="senha-desbloqueio">Senha de segurança</label>
+        <input id="senha-desbloqueio" type="password" inputmode="numeric" autocomplete="off" required class="field" placeholder="Senha de segurança" />
+        <button type="submit" class="btn-gold shrink-0"><i data-lucide="key-round" class="h-4 w-4"></i>Desbloquear</button>
+      </form>
+      <p class="erro mt-2 hidden text-xs text-red-300" role="alert"></p>
+    </section>`;
+}
+
+async function desbloquear(e, casa) {
+  e.preventDefault();
+  const bloco = document.getElementById('bloco-restrito');
+  const erro = bloco.querySelector('.erro');
+  const botao = bloco.querySelector('button');
+  erro.classList.add('hidden');
+  botao.disabled = true;
+  try {
+    const { dados_restritos: d } = await api.desbloquear(casa.slug, bloco.querySelector('input').value);
+    const whats = linkWhatsapp(d.whatsapp, MENSAGEM_WHATSAPP_ENDERECO);
+    const insta = linkInstagramSeguro(d.instagram_url);
+    bloco.innerHTML = `
+      <p class="flex items-center gap-2 text-sm font-semibold"><i data-lucide="lock-open" class="h-4 w-4 text-ouro"></i> Contato liberado</p>
+      <p class="mt-2 text-sm text-stone-300">${esc(d.endereco_completo || 'Endereço informado diretamente pela liderança.')}</p>
+      <div class="mt-3 space-y-2">
+        ${whats ? `<a href="${esc(whats)}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp w-full"><i data-lucide="message-circle" class="h-4 w-4"></i>WhatsApp · ${esc(d.whatsapp_formatado || formatarTelefone(d.whatsapp))}</a>` : ''}
+        ${insta ? `<a href="${esc(insta)}" target="_blank" rel="noopener noreferrer" class="btn-ghost w-full"><i data-lucide="instagram" class="h-4 w-4"></i>Instagram</a>` : ''}
+      </div>`;
+    icones();
+  } catch (err) {
+    erro.textContent = err.message;
+    erro.classList.remove('hidden');
+    botao.disabled = false;
+  }
 }
 
 export const detalheAberto = () => drawer().classList.contains('aberto');
@@ -49,7 +92,7 @@ function htmlDetalhe(c) {
   const blocoLocal = aproximado
     ? `<div class="rounded-2xl border border-dashed border-white/20 bg-white/[0.03] p-4">
          <p class="flex items-center gap-2 text-sm font-semibold"><i data-lucide="circle-dashed" class="h-4 w-4 text-ouro"></i> Localização aproximada · ${esc(c.bairro)}</p>
-         <p class="mt-1 text-xs leading-relaxed text-stone-400">Por segurança, esta casa mostra apenas uma área de ~${RAIO_APROXIMADO_M} m. O endereço é informado diretamente pela casa.</p>
+         <p class="mt-1 text-xs leading-relaxed text-stone-400">Por segurança, esta casa mostra apenas uma área de ~${RAIO_APROXIMADO_M} m. ${c.contato_restrito ? 'O contato é liberado com a senha de segurança abaixo.' : 'O endereço é informado diretamente pela casa.'}</p>
          ${whats ? `<a href="${esc(whats)}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp mt-3 w-full"><i data-lucide="message-circle" class="h-4 w-4"></i>Solicitar endereço e agendamento via WhatsApp</a>` : ''}
        </div>`
     : `<div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -106,6 +149,8 @@ function htmlDetalhe(c) {
         <h3 class="section-title">Ações sociais</h3>
         <div class="mt-2 flex flex-wrap gap-1.5">${acoes}</div>
       </section>` : ''}
+
+      ${c.contato_restrito ? htmlDesbloqueio() : ''}
 
       <section class="mt-7 space-y-2">
         ${whats && !aproximado ? `<a href="${esc(whats)}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp w-full"><i data-lucide="message-circle" class="h-4 w-4"></i>Falar no WhatsApp · ${esc(formatarTelefone(c.whatsapp_contato))}</a>` : ''}

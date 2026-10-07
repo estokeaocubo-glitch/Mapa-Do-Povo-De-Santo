@@ -15,6 +15,11 @@ async function requisicao(url, opcoes = {}) {
 export const api = {
   terreiros: () => requisicao('/api/terreiros'),
   estatisticas: () => requisicao('/api/estatisticas'),
+  desbloquear: (slug, senha) => requisicao('/api/desbloquear', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug, senha }),
+  }),
   cadastrar: (dados) => requisicao('/api/cadastro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

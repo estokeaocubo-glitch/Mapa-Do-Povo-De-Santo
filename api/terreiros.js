@@ -8,7 +8,8 @@
 //     - só expõe o endereço quando a casa escolheu 'Exato';
 //     - já exclui 'Oculto_Apenas_Censo' e qualquer status ≠ 'Aprovado'.
 //  2. toPublicTerreiro() remonta cada registro por lista branca de campos.
-//  3. assertSemCamposPrivados() aborta a resposta se algo privado escapar.
+//  3. Contatos com contato_restrito saem como null (ver /api/desbloquear).
+//  4. assertSemCamposPrivados() aborta a resposta se algo privado escapar.
 // =============================================================================
 import { getDb } from '../lib/db.js';
 import { getQuery, methodNotAllowed, sendJson, withErrors } from '../lib/http.js';
@@ -19,7 +20,8 @@ const SQL_PUBLICO = `
   SELECT id, slug, nome_casa, categoria, vertente, nacao_linha, orixa_guia_regente,
          lideranca_titulo, lideranca_nome_religioso, ano_fundacao, distrito, bairro,
          endereco_publico, lat_publica, lng_publica, nivel_privacidade,
-         historia_resumo, calendario_giras, acoes_sociais, whatsapp_contato, instagram_url
+         historia_resumo, calendario_giras, acoes_sociais, whatsapp_contato, instagram_url,
+         contato_restrito
   FROM vw_terreiros_publicos`;
 
 export default withErrors(async (req, res) => {

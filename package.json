@@ -5,13 +5,14 @@
   "description": "Mapa interativo, catálogo histórico e censo comunitário do Povo de Santo de Petrópolis/RJ",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=20.12"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
     "prestart": "npm run build",
     "start": "node server.js",
-    "db:schema": "psql \"$DATABASE_URL\" -f db/schema.sql"
+    "db:schema": "psql \"$DATABASE_URL\" -f db/schema.sql",
+    "hash-senha": "node scripts/hash-senha.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
