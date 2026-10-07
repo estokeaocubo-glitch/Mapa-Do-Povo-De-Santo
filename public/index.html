@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mapa do Povo de Santo · Petrópolis</title>
+  <meta name="description" content="Mapa interativo, memória e censo comunitário das casas de Umbanda, Candomblé e tradições de matriz africana de Petrópolis/RJ." />
+  <meta name="theme-color" content="#12100E" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
+
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="/vendor/markercluster/MarkerCluster.css" />
+  <link rel="stylesheet" href="/assets/app.css" />
+
+  <script src="/vendor/leaflet/leaflet.js" defer></script>
+  <script src="/vendor/markercluster/leaflet.markercluster.js" defer></script>
+  <script src="/vendor/lucide/lucide.min.js" defer></script>
+  <script src="/app.js" type="module"></script>
+</head>
+<body class="overflow-hidden">
+  <a href="#lista-casas" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[1000] btn-gold">Pular para a lista de casas</a>
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="fixed inset-x-0 top-0 z-[600] p-3 md:p-4">
+    <div class="glass flex items-center gap-3 rounded-2xl px-3 py-2.5 md:px-5">
+      <a href="/" class="flex min-w-0 items-center gap-3">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-terracota to-ouro text-breu">
+          <i data-lucide="sun-medium" class="h-5 w-5"></i>
+        </span>
+        <span class="min-w-0">
+          <span class="block truncate font-display text-base font-bold leading-tight tracking-wide md:text-lg">Mapa do Povo de Santo</span>
+          <span class="block truncate text-[11px] uppercase tracking-[0.2em] text-stone-400">Petrópolis · RJ · Memória e Axé</span>
+        </span>
+      </a>
+      <nav class="ml-auto flex items-center gap-2" aria-label="Ações principais">
+        <button type="button" class="btn-ghost px-3" data-abrir="modal-censo" title="Censo comunitário">
+          <i data-lucide="chart-no-axes-column" class="h-4 w-4"></i><span class="hidden lg:inline">Censo</span>
+        </button>
+        <button type="button" class="btn-ghost px-3 text-ouro" data-abrir="modal-apoio" title="Apoio jurídico e denúncia">
+          <i data-lucide="shield-alert" class="h-4 w-4"></i><span class="hidden lg:inline">Apoio Jurídico / Denúncia</span>
+        </button>
+        <button type="button" class="btn-primary px-3 md:px-4" data-abrir="modal-cadastro">
+          <i data-lucide="plus" class="h-4 w-4"></i><span class="hidden sm:inline">Cadastrar Casa</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===================== MAPA ===================== -->
+  <main>
+    <div id="mapa" role="region" aria-label="Mapa das casas de axé de Petrópolis"></div>
+
+    <!-- Sidebar (desktop) / Bottom sheet (mobile) -->
+    <aside id="painel" class="glass" data-estado="recolhido" aria-label="Filtros e lista de casas">
+      <div class="alca flex cursor-grab touch-none justify-center pb-1 pt-2.5" id="painel-alca">
+        <button type="button" class="h-1.5 w-12 rounded-full bg-white/25" aria-label="Expandir ou recolher painel" id="painel-alca-btn"></button>
+      </div>
+
+      <div class="space-y-3 px-4 pb-3 md:pt-4">
+        <label class="relative block">
+          <span class="sr-only">Buscar por nome, Orixá, guia ou liderança</span>
+          <i data-lucide="search" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500"></i>
+          <input id="filtro-busca" type="search" class="field pl-10" placeholder="Buscar casa, Orixá, guia ou liderança…" autocomplete="off" />
+        </label>
+
+        <div class="flex flex-wrap gap-1.5" id="filtro-segmentos" role="group" aria-label="Segmentos (legenda do mapa)"></div>
+
+        <details class="group" id="filtros-avancados">
+          <summary class="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold uppercase tracking-wider text-stone-400 hover:text-algodao">
+            <i data-lucide="sliders-horizontal" class="h-3.5 w-3.5"></i> Filtros
+            <span id="filtros-ativos" class="hidden rounded-full bg-terracota px-1.5 text-[10px] text-white"></span>
+            <i data-lucide="chevron-down" class="ml-auto h-4 w-4 transition group-open:rotate-180"></i>
+          </summary>
+          <div class="mt-3 grid grid-cols-1 gap-2.5">
+            <select id="filtro-vertente" class="field" aria-label="Vertente ou nação"></select>
+            <select id="filtro-distrito" class="field" aria-label="Distrito de Petrópolis"></select>
+            <select id="filtro-acao" class="field" aria-label="Ação social"></select>
+          </div>
+        </details>
+
+        <div class="flex items-center justify-between text-xs text-stone-400">
+          <span id="contagem" aria-live="polite">Carregando…</span>
+          <button type="button" id="limpar-filtros" class="hidden font-semibold text-ouro hover:underline">Limpar filtros</button>
+        </div>
+      </div>
+
+      <div class="kente mx-4 rounded-full opacity-70"></div>
+
+      <ul id="lista-casas" class="scroll-fino flex-1 space-y-2 overflow-y-auto px-4 py-3" aria-label="Casas encontradas"></ul>
+
+      <div class="flex items-center gap-4 border-t border-white/5 px-4 py-2.5 text-[11px] text-stone-400">
+        <span class="flex items-center gap-1.5"><i data-lucide="map-pin" class="h-3.5 w-3.5 text-algodao"></i> Local exato</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block h-3.5 w-3.5 rounded-full border border-dashed border-algodao/70 bg-algodao/10"></span> Área aproximada (500 m)</span>
+      </div>
+    </aside>
+
+    <!-- Drawer de detalhes da casa -->
+    <aside id="drawer" class="glass" aria-label="Detalhes da casa" aria-hidden="true" tabindex="-1">
+      <div id="drawer-conteudo" class="scroll-fino flex-1 overflow-y-auto"></div>
+    </aside>
+  </main>
+
+  <!-- ===================== MODAL: CADASTRO ===================== -->
+  <div id="modal-cadastro" class="modal items-end justify-center md:items-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="titulo-cadastro">
+    <div class="modal-fundo" data-fechar></div>
+    <div class="glass relative flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl md:rounded-3xl">
+      <div class="flex items-start gap-3 border-b border-white/10 px-5 py-4 md:px-7">
+        <div>
+          <p class="section-title">Censo & Mapeamento</p>
+          <h2 id="titulo-cadastro" class="font-display text-xl font-bold md:text-2xl">Cadastrar uma casa</h2>
+        </div>
+        <button type="button" class="btn-ghost ml-auto h-10 w-10 p-0" data-fechar aria-label="Fechar"><i data-lucide="x" class="h-5 w-5"></i></button>
+      </div>
+      <form id="form-cadastro" class="scroll-fino flex-1 space-y-7 overflow-y-auto px-5 py-6 md:px-7" novalidate></form>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: CENSO (Bento grid) ===================== -->
+  <div id="modal-censo" class="modal items-stretch justify-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="titulo-censo">
+    <div class="modal-fundo" data-fechar></div>
+    <div class="relative flex w-full max-w-6xl flex-col overflow-hidden bg-breu/95 md:rounded-3xl md:border md:border-white/10">
+      <div class="flex items-start gap-3 px-5 pb-2 pt-5 md:px-8">
+        <div>
+          <p class="section-title">Censo Comunitário</p>
+          <h2 id="titulo-censo" class="font-display text-2xl font-bold md:text-3xl">O Axé de Petrópolis em números</h2>
+          <p class="mt-1 max-w-2xl text-sm text-stone-400">Inclui as casas que preferiram não aparecer no mapa — elas são contadas, mas nunca identificadas.</p>
+        </div>
+        <button type="button" class="btn-ghost ml-auto h-10 w-10 shrink-0 p-0" data-fechar aria-label="Fechar"><i data-lucide="x" class="h-5 w-5"></i></button>
+      </div>
+      <div id="censo-conteudo" class="scroll-fino flex-1 overflow-y-auto px-5 pb-8 pt-4 md:px-8"></div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: APOIO JURÍDICO ===================== -->
+  <div id="modal-apoio" class="modal items-end justify-center md:items-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="titulo-apoio">
+    <div class="modal-fundo" data-fechar></div>
+    <div class="glass scroll-fino relative max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl p-6 md:rounded-3xl md:p-7">
+      <div class="flex items-start gap-3">
+        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-ouro/15 text-ouro"><i data-lucide="scale" class="h-5 w-5"></i></span>
+        <div>
+          <p class="section-title">Intolerância religiosa é crime</p>
+          <h2 id="titulo-apoio" class="font-display text-xl font-bold">Apoio Jurídico e Denúncia</h2>
+        </div>
+        <button type="button" class="btn-ghost ml-auto h-10 w-10 shrink-0 p-0" data-fechar aria-label="Fechar"><i data-lucide="x" class="h-5 w-5"></i></button>
+      </div>
+
+      <div class="mt-5 space-y-3 text-sm">
+        <a href="tel:100" class="flex items-center gap-4 rounded-2xl border border-ouro/40 bg-ouro/10 p-4 transition hover:bg-ouro/15">
+          <span class="font-display text-3xl font-bold text-ouro">100</span>
+          <span><strong class="block text-algodao">Disque 100 — Direitos Humanos</strong>
+            <span class="text-stone-300">Gratuito, 24 h, aceita denúncia anônima.</span></span>
+        </a>
+        <a href="tel:190" class="flex items-center gap-4 rounded-2xl border border-terracota/40 bg-terracota/10 p-4 transition hover:bg-terracota/15">
+          <span class="font-display text-3xl font-bold text-terracota-400">190</span>
+          <span><strong class="block text-algodao">Polícia Militar — emergência</strong>
+            <span class="text-stone-300">Ataque em andamento, ameaça ou invasão do terreiro.</span></span>
+        </a>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <strong class="block text-algodao">COMPIR Petrópolis</strong>
+          <span class="text-stone-300">Conselho Municipal de Promoção da Igualdade Racial — acompanha casos de racismo religioso no município. Procure pela Prefeitura de Petrópolis.</span>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <strong class="block text-algodao">Delegacia, Defensoria e Ministério Público</strong>
+          <span class="text-stone-300">Registre ocorrência em qualquer delegacia (ou na DECRADI, no Rio). Sem advogado? A Defensoria Pública do RJ atende gratuitamente.</span>
+        </div>
+      </div>
+
+      <div class="mt-5 rounded-2xl bg-black/30 p-4 text-xs leading-relaxed text-stone-300">
+        <p class="mb-2 font-semibold uppercase tracking-wider text-stone-400">Guarde provas</p>
+        <ul class="list-disc space-y-1 pl-4">
+          <li>Fotos, vídeos e prints com data; nomes e contatos de testemunhas.</li>
+          <li>Boletim de ocorrência citando a <strong>Lei 7.716/1989, art. 20</strong> (discriminação por religião) e/ou o <strong>art. 208 do Código Penal</strong> (ultraje a culto).</li>
+          <li>A liberdade de crença e a proteção aos locais de culto estão no <strong>art. 5º, VI, da Constituição</strong>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" class="pointer-events-none fixed inset-x-0 top-20 z-[1000] flex flex-col items-center gap-2 px-4" aria-live="assertive"></div>
+</body>
+</html>

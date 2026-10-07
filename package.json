@@ -1,0 +1,27 @@
+{
+  "name": "mapa-do-povo-de-santo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mapa interativo, catálogo histórico e censo comunitário do Povo de Santo de Petrópolis/RJ",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "prestart": "npm run build",
+    "start": "node server.js",
+    "db:schema": "psql \"$DATABASE_URL\" -f db/schema.sql"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
+    "lucide": "^0.460.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  },
+  "license": "MIT"
+}
