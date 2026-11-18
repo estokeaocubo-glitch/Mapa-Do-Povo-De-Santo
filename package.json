@@ -5,12 +5,12 @@
   "description": "Mapa interativo, catálogo histórico e censo comunitário do Povo de Santo de Petrópolis/RJ (Cloudflare Workers + D1)",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "wrangler dev",
-    "test": "node --test test/",
+    "test": "node --no-warnings --test \"test/*.test.js\"",
     "deploy": "npm test && wrangler deploy",
     "hash-senha": "node scripts/hash-senha.mjs",
     "db:migrar:local": "wrangler d1 migrations apply mapa-povo-de-santo --local",
