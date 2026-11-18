@@ -7,6 +7,7 @@ const drawer = () => document.getElementById('drawer');
 
 export function abrirDetalhe(casa, { aoFechar }) {
   const el = drawer();
+  el.dataset.slug = casa.slug;
   document.getElementById('drawer-conteudo').innerHTML = htmlDetalhe(casa);
   icones();
   el.classList.add('aberto');
@@ -14,6 +15,8 @@ export function abrirDetalhe(casa, { aoFechar }) {
   el.querySelector('[data-fechar-drawer]').addEventListener('click', aoFechar);
   el.querySelector('#form-desbloqueio')?.addEventListener('submit', (e) => desbloquear(e, casa));
   el.focus({ preventScroll: true });
+  // Já desbloqueou nesta sessão? Libera sem pedir a senha de novo (cookie HttpOnly).
+  if (casa.contato_restrito && sessaoProvavel()) liberar(casa).catch(() => esquecerSessao());
 }
 
 export function fecharDetalhe() {
@@ -27,14 +30,37 @@ function htmlDesbloqueio() {
   return `
     <section class="mt-6 rounded-2xl border border-ouro/30 bg-ouro/5 p-4" id="bloco-restrito">
       <p class="flex items-center gap-2 text-sm font-semibold"><i data-lucide="lock" class="h-4 w-4 text-ouro"></i> Contato protegido</p>
-      <p class="mt-1 text-xs leading-relaxed text-stone-400">O WhatsApp e o endereço desta casa só são liberados com a senha de segurança da rede.</p>
+      <p class="mt-1 text-xs leading-relaxed text-stone-400">O WhatsApp e o endereço desta casa só são liberados com a senha de segurança da rede. Depois de digitar uma vez, as outras casas ficam liberadas por 30 minutos.</p>
       <form id="form-desbloqueio" class="mt-3 flex gap-2">
         <label class="sr-only" for="senha-desbloqueio">Senha de segurança</label>
-        <input id="senha-desbloqueio" type="password" inputmode="numeric" autocomplete="off" required class="field" placeholder="Senha de segurança" />
+        <input id="senha-desbloqueio" type="password" autocomplete="off" required class="field" placeholder="Senha de segurança" />
         <button type="submit" class="btn-gold shrink-0"><i data-lucide="key-round" class="h-4 w-4"></i>Desbloquear</button>
       </form>
       <p class="erro mt-2 hidden text-xs text-red-300" role="alert"></p>
     </section>`;
+}
+
+// O cookie de sessão é HttpOnly (o JS não o lê); guardamos só o horário em que
+// ele expira, para saber se vale tentar liberar sem senha.
+const CHAVE_SESSAO = 'mps_sessao_ate';
+const sessaoProvavel = () => { try { return Number(sessionStorage.getItem(CHAVE_SESSAO)) > Date.now(); } catch { return false; } };
+const lembrarSessao = () => { try { sessionStorage.setItem(CHAVE_SESSAO, String(Date.now() + 29 * 60 * 1000)); } catch { /* sem storage */ } };
+const esquecerSessao = () => { try { sessionStorage.removeItem(CHAVE_SESSAO); } catch { /* sem storage */ } };
+
+async function liberar(casa, senha) {
+  const { dados_restritos: d } = await api.desbloquear(casa.slug, senha);
+  const bloco = document.getElementById('bloco-restrito');
+  if (!bloco || drawer().dataset.slug !== casa.slug) return; // a pessoa já abriu outra casa
+  const whats = linkWhatsapp(d.whatsapp, MENSAGEM_WHATSAPP_ENDERECO);
+  const insta = linkInstagramSeguro(d.instagram_url);
+  bloco.innerHTML = `
+    <p class="flex items-center gap-2 text-sm font-semibold"><i data-lucide="lock-open" class="h-4 w-4 text-ouro"></i> Contato liberado</p>
+    <p class="mt-2 text-sm text-stone-300">${esc(d.endereco_completo || 'Endereço informado diretamente pela liderança.')}</p>
+    <div class="mt-3 space-y-2">
+      ${whats ? `<a href="${esc(whats)}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp w-full"><i data-lucide="message-circle" class="h-4 w-4"></i>WhatsApp · ${esc(d.whatsapp_formatado || formatarTelefone(d.whatsapp))}</a>` : ''}
+      ${insta ? `<a href="${esc(insta)}" target="_blank" rel="noopener noreferrer" class="btn-ghost w-full"><i data-lucide="instagram" class="h-4 w-4"></i>Instagram</a>` : ''}
+    </div>`;
+  icones();
 }
 
 async function desbloquear(e, casa) {
@@ -45,21 +71,13 @@ async function desbloquear(e, casa) {
   erro.classList.add('hidden');
   botao.disabled = true;
   try {
-    const { dados_restritos: d } = await api.desbloquear(casa.slug, bloco.querySelector('input').value);
-    const whats = linkWhatsapp(d.whatsapp, MENSAGEM_WHATSAPP_ENDERECO);
-    const insta = linkInstagramSeguro(d.instagram_url);
-    bloco.innerHTML = `
-      <p class="flex items-center gap-2 text-sm font-semibold"><i data-lucide="lock-open" class="h-4 w-4 text-ouro"></i> Contato liberado</p>
-      <p class="mt-2 text-sm text-stone-300">${esc(d.endereco_completo || 'Endereço informado diretamente pela liderança.')}</p>
-      <div class="mt-3 space-y-2">
-        ${whats ? `<a href="${esc(whats)}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp w-full"><i data-lucide="message-circle" class="h-4 w-4"></i>WhatsApp · ${esc(d.whatsapp_formatado || formatarTelefone(d.whatsapp))}</a>` : ''}
-        ${insta ? `<a href="${esc(insta)}" target="_blank" rel="noopener noreferrer" class="btn-ghost w-full"><i data-lucide="instagram" class="h-4 w-4"></i>Instagram</a>` : ''}
-      </div>`;
-    icones();
+    await liberar(casa, bloco.querySelector('input').value);
+    lembrarSessao();
   } catch (err) {
     erro.textContent = err.message;
     erro.classList.remove('hidden');
     botao.disabled = false;
+    bloco.querySelector('input').focus();
   }
 }
 
@@ -80,7 +98,7 @@ function htmlDetalhe(c) {
           <span class="min-w-0 text-sm">
             <strong class="block text-algodao">${esc(g.tipo || 'Atendimento')}</strong>
             <span class="text-stone-300">${esc(g.dia)}${g.horario ? ` · ${esc(g.horario)}` : ''}</span>
-            ${g.frequencia ? `<span class="block text-xs text-stone-500">${esc(g.frequencia)}</span>` : ''}
+            ${g.frequencia ? `<span class="block text-xs text-stone-400">${esc(g.frequencia)}</span>` : ''}
           </span>
         </li>`).join('')
     : '<li class="text-sm text-stone-400">A casa não divulgou um calendário público. Fale pelo WhatsApp.</li>';
@@ -117,16 +135,16 @@ function htmlDetalhe(c) {
       <dl class="mt-5 grid grid-cols-2 gap-2">
         ${c.lideranca_nome_religioso ? `
         <div class="col-span-2 rounded-2xl bg-white/[0.04] p-3.5">
-          <dt class="text-[11px] uppercase tracking-wider text-stone-500">${esc(c.lideranca_titulo || 'Liderança')}</dt>
+          <dt class="text-[11px] uppercase tracking-wider text-stone-400">${esc(c.lideranca_titulo || 'Liderança')}</dt>
           <dd class="mt-0.5 font-semibold">${esc(c.lideranca_nome_religioso)}</dd>
         </div>` : ''}
         ${c.ano_fundacao ? `
         <div class="rounded-2xl bg-white/[0.04] p-3.5">
-          <dt class="text-[11px] uppercase tracking-wider text-stone-500">Fundação</dt>
+          <dt class="text-[11px] uppercase tracking-wider text-stone-400">Fundação</dt>
           <dd class="mt-0.5 font-semibold">${esc(c.ano_fundacao)}</dd>
         </div>
         <div class="rounded-2xl bg-white/[0.04] p-3.5">
-          <dt class="text-[11px] uppercase tracking-wider text-stone-500">História</dt>
+          <dt class="text-[11px] uppercase tracking-wider text-stone-400">História</dt>
           <dd class="mt-0.5 font-semibold">${esc(idade)} anos de axé</dd>
         </div>` : ''}
       </dl>

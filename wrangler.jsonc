@@ -18,7 +18,9 @@
     {
       "binding": "DB",
       "database_name": "mapa-povo-de-santo",
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      // PREENCHER: ID real gerado por `wrangler d1 create` (o valor abaixo só serve para rodar localmente).
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
     }
   ],
 
@@ -27,5 +29,6 @@
   // Secrets (não ficam neste arquivo):
   //   npx wrangler secret put ADMIN_TOKEN
   //   npx wrangler secret put ACESSO_RESTRITO_HASH
+  //   npx wrangler secret put IP_SALT          (openssl rand -hex 32)
   // Em desenvolvimento local, use o arquivo .dev.vars (veja .dev.vars.example).
 }

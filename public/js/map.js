@@ -14,6 +14,7 @@ let cluster;
 let camadaAreas;
 const camadas = new Map(); // id → { camada, tipo }
 let ativoId = null;
+const menosMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function criarMapa(elementoId, { aoSelecionar }) {
   mapa = L.map(elementoId, {
@@ -82,6 +83,19 @@ export function renderizarCasas(casas) {
         fillOpacity: 0.18,
       });
       camadaAreas.addLayer(camada);
+      // Acessibilidade: a área vira um "botão" com nome, acionável por teclado.
+      const el = camada.getElement();
+      if (el) {
+        el.setAttribute('role', 'button');
+        el.setAttribute('tabindex', '0');
+        el.setAttribute('aria-label', `${casa.nome_casa} — área aproximada em ${casa.bairro}`);
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            mapa._aoSelecionar(casa.id);
+          }
+        });
+      }
     } else {
       camada = L.marker([lat, lng], { icon: iconePino(casa), title: casa.nome_casa, riseOnHover: true, keyboard: true });
       cluster.addLayer(camada);
@@ -99,7 +113,7 @@ export function renderizarCasas(casas) {
 export function enquadrar(casas) {
   if (!casas.length) return;
   const limites = L.latLngBounds(casas.map((c) => [c.localizacao.lat, c.localizacao.lng]));
-  mapa.fitBounds(limites.pad(0.15), { maxZoom: 14, animate: true });
+  mapa.fitBounds(limites.pad(0.15), { maxZoom: 14, animate: !menosMovimento() });
 }
 
 export function focarCasa(id, { deslocarPara = null } = {}) {
@@ -113,7 +127,9 @@ export function focarCasa(id, { deslocarPara = null } = {}) {
   const alvo = mapa.project([lat, lng], zoom);
   if (deslocarPara === 'esquerda') alvo.x += 200;
   if (deslocarPara === 'cima') alvo.y += mapa.getSize().y * 0.25;
-  mapa.flyTo(mapa.unproject(alvo, zoom), zoom, { duration: 0.8 });
+  // Respeita quem pede menos movimento no sistema operacional.
+  if (menosMovimento()) mapa.setView(mapa.unproject(alvo, zoom), zoom, { animate: false });
+  else mapa.flyTo(mapa.unproject(alvo, zoom), zoom, { duration: 0.8 });
 }
 
 export function marcarAtivo(id) {

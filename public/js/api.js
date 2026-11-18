@@ -1,12 +1,21 @@
 // Cliente da API REST.
 async function requisicao(url, opcoes = {}) {
-  const resp = await fetch(url, { headers: { Accept: 'application/json', ...(opcoes.headers || {}) }, ...opcoes });
+  let resp;
+  try {
+    resp = await fetch(url, { ...opcoes, headers: { Accept: 'application/json', ...(opcoes.headers || {}) } });
+  } catch {
+    // Falha de rede (sem internet, servidor fora do ar): mensagem clara em português.
+    const erro = new Error('Sem conexão com o servidor. Verifique sua internet e tente novamente.');
+    erro.status = 0;
+    throw erro;
+  }
   let corpo = null;
   try { corpo = await resp.json(); } catch { /* resposta sem JSON */ }
   if (!resp.ok) {
-    const erro = new Error(corpo?.erro || `Erro ${resp.status}`);
+    const erro = new Error(corpo?.erro || 'O servidor não conseguiu responder agora. Tente novamente em instantes.');
     erro.status = resp.status;
     erro.detalhes = corpo?.detalhes;
+    erro.precisaSenha = Boolean(corpo?.precisa_senha);
     throw erro;
   }
   return corpo;
@@ -17,6 +26,7 @@ export const api = {
   estatisticas: () => requisicao('/api/estatisticas'),
   desbloquear: (slug, senha) => requisicao('/api/desbloquear', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ slug, senha }),
   }),

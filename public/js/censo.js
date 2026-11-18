@@ -6,15 +6,19 @@ import { esc, icones } from './utils.js';
 const fmt = new Intl.NumberFormat('pt-BR');
 
 function barras(itens, { cor = () => 'var(--terracota)', rotulo = (i) => i.rotulo } = {}) {
-  if (!itens.length) return '<p class="text-sm text-stone-500">Sem dados ainda.</p>';
-  const max = Math.max(...itens.map((i) => i.total), 1);
+  if (!itens.length) return '<p class="text-sm text-stone-400">Sem dados ainda.</p>';
+  // Contagens suprimidas (1–2 casas incluindo alguma oculta) aparecem como
+  // "menos de 3", com barra hachurada — protegem casas ocultas de reidentificação.
+  const valor = (i) => (i.suprimido ? 2 : i.total);
+  const texto = (i) => (i.suprimido ? 'menos de 3' : fmt.format(i.total));
+  const max = Math.max(...itens.map(valor), 1);
   return `<ul class="space-y-2.5">${itens.map((i) => `
-    <li title="${esc(rotulo(i))}: ${fmt.format(i.total)}">
+    <li title="${esc(rotulo(i))}: ${texto(i)}">
       <div class="mb-1 flex items-baseline justify-between gap-3 text-xs">
         <span class="truncate text-stone-300">${esc(rotulo(i))}</span>
-        <span class="font-semibold tabular-nums text-algodao">${fmt.format(i.total)}</span>
+        <span class="font-semibold tabular-nums text-algodao">${texto(i)}</span>
       </div>
-      <div class="trilho"><div class="barra" style="width:${(i.total / max) * 100}%;--cor:${cor(i)}"></div></div>
+      <div class="trilho"><div class="barra${i.suprimido ? ' suprimida' : ''}" style="width:${(valor(i) / max) * 100}%;--cor:${cor(i)}"></div></div>
     </li>`).join('')}</ul>`;
 }
 
@@ -45,7 +49,7 @@ export function renderizarCenso(el, s) {
         <span class="text-stone-300">${p.rotulo}</span>
         <span class="ml-auto font-semibold tabular-nums">${fmt.format(priv[p.chave] || 0)} · ${Math.round(((priv[p.chave] || 0) / totalPriv) * 100)}%</span></li>`).join('')}
     </ul>
-    <p class="mt-3 text-[11px] leading-relaxed text-stone-500">A escolha de privacidade de cada casa é respeitada: a ofuscação é feita no servidor.</p>`;
+    <p class="mt-3 text-[11px] leading-relaxed text-stone-400">A escolha de privacidade de cada casa é respeitada: a ofuscação é feita no servidor.</p>`;
 
   const antigas = s.mais_antigas.length ? `<ol class="relative space-y-4 border-l border-ouro/30 pl-5">${s.mais_antigas.map((c) => `
     <li class="relative">
@@ -55,7 +59,7 @@ export function renderizarCenso(el, s) {
         ? '<span class="inline-flex items-center gap-1.5 text-stone-300"><i data-lucide="eye-off" class="h-3.5 w-3.5"></i>Casa preservada (identidade protegida)</span>'
         : `<a class="hover:text-ouro hover:underline" href="#${esc(c.slug)}" data-ir-para="${esc(c.slug)}">${esc(c.nome_casa)}</a>`}</p>
       <p class="text-xs text-stone-400">${esc([c.vertente, c.nacao_linha, c.distrito?.replace(/ - .*/, '')].filter(Boolean).join(' · '))}${c.anos_de_historia ? ` · ${c.anos_de_historia} anos` : ''}</p>
-    </li>`).join('')}</ol>` : '<p class="text-sm text-stone-500">Sem dados ainda.</p>';
+    </li>`).join('')}</ol>` : '<p class="text-sm text-stone-400">Sem dados ainda.</p>';
 
   el.innerHTML = `
     <div class="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -70,7 +74,7 @@ export function renderizarCenso(el, s) {
 
       <section class="bento">
         <p class="text-xs font-semibold uppercase tracking-wider text-stone-400">Fundação mais antiga</p>
-        <p class="mt-2 font-display text-4xl font-bold text-ouro">${s.fundacao_mais_antiga ?? '—'}</p>
+        <p class="mt-2 font-display ${typeof s.fundacao_mais_antiga === 'string' ? 'text-2xl' : 'text-4xl'} font-bold text-ouro">${esc(s.fundacao_mais_antiga ?? '—')}</p>
         <p class="mt-1 text-sm text-stone-400">Média de <strong class="text-algodao">${s.media_anos_de_historia ?? '—'} anos</strong> de história por casa</p>
       </section>
 
@@ -86,7 +90,12 @@ export function renderizarCenso(el, s) {
       ${tile('', 'Nações e linhas', 'drum', barras(s.por_nacao.slice(0, 8), { cor: () => 'var(--ouro)' }))}
       ${tile('sm:col-span-2', 'Ações sociais', 'hand-heart', barras(s.acoes_sociais.slice(0, 8), { cor: () => '#3A9460' }))}
       ${tile('sm:col-span-2', 'Casas mais antigas', 'landmark', antigas)}
-    </div>`;
+    </div>
+    <p class="mt-5 text-xs leading-relaxed text-stone-400">
+      <i data-lucide="info" class="mr-1 inline h-3.5 w-3.5 align-[-2px]"></i>
+      "Menos de 3" aparece quando um grupo tem 1 ou 2 casas e alguma delas optou por ficar fora do mapa:
+      o número exato poderia revelar qual casa é.
+    </p>`;
   icones();
 
   el.querySelectorAll('[data-ir-para]').forEach((a) => a.addEventListener('click', () => {

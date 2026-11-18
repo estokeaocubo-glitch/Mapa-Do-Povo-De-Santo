@@ -10,11 +10,12 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "test": "node --test test/",
+    "deploy": "npm test && wrangler deploy",
     "hash-senha": "node scripts/hash-senha.mjs",
-    "db:local": "wrangler d1 execute mapa-povo-de-santo --local --file db/schema.sql && node scripts/gerar-seed.mjs db/seed-ficticio.json db/gerado/seed-ficticio.sql && wrangler d1 execute mapa-povo-de-santo --local --file db/gerado/seed-ficticio.sql",
-    "db:schema:remote": "wrangler d1 execute mapa-povo-de-santo --remote --file db/schema.sql",
-    "db:seed-ficticio:remote": "node scripts/gerar-seed.mjs db/seed-ficticio.json db/gerado/seed-ficticio.sql && wrangler d1 execute mapa-povo-de-santo --remote --file db/gerado/seed-ficticio.sql",
+    "db:migrar:local": "wrangler d1 migrations apply mapa-povo-de-santo --local",
+    "db:migrar:remote": "wrangler d1 migrations apply mapa-povo-de-santo --remote",
+    "db:local": "npm run db:migrar:local && node scripts/gerar-seed.mjs db/seed-ficticio.json db/gerado/seed-ficticio.sql && wrangler d1 execute mapa-povo-de-santo --local --file db/gerado/seed-ficticio.sql",
     "db:seed-real:remote": "node scripts/gerar-seed.mjs db/seed-real.json db/gerado/seed-real.sql && wrangler d1 execute mapa-povo-de-santo --remote --file db/gerado/seed-real.sql"
   },
   "dependencies": {

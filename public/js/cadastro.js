@@ -11,6 +11,7 @@ import {
   ACOES_SOCIAIS_SUGERIDAS, CENTRO_PETROPOLIS, DISTRITOS, TEXTO_PRIVACIDADE, TITULOS_LIDERANCA, VERTENTES,
 } from './constants.js';
 import { esc, icones, toast } from './utils.js';
+import { validarCadastro } from './validacao.js';
 
 let miniMapa;
 let marcador;
@@ -19,7 +20,7 @@ const campo = (nome, rotulo, entrada, ajuda = '') => `
   <div data-campo="${nome}">
     <label class="label" for="cad-${nome}">${rotulo}</label>
     ${entrada}
-    ${ajuda ? `<p class="mt-1 text-xs text-stone-500">${ajuda}</p>` : ''}
+    ${ajuda ? `<p class="mt-1 text-xs text-stone-400">${ajuda}</p>` : ''}
     <p class="erro mt-1 hidden text-xs text-red-300"></p>
   </div>`;
 
@@ -96,7 +97,7 @@ function htmlFormulario() {
             <i data-lucide="crosshair" class="h-3.5 w-3.5"></i> Usar minha localização</button>
         </div>
         <div id="cad-mapa" class="h-64 overflow-hidden rounded-2xl border border-white/10"></div>
-        <p id="cad-coords" class="mt-1 text-xs text-stone-500">Toque no mapa para posicionar o pino. Você pode arrastá-lo depois.</p>
+        <p id="cad-coords" class="mt-1 text-xs text-stone-400">Toque no mapa para posicionar o pino. Você pode arrastá-lo depois.</p>
         <p class="erro mt-1 hidden text-xs text-red-300"></p>
       </div>
     </fieldset>
@@ -129,7 +130,7 @@ function htmlFormulario() {
     <div data-campo="consentimento_lgpd" class="rounded-2xl border border-white/10 bg-black/30 p-4">
       <label class="flex items-start gap-3 text-xs leading-relaxed text-stone-300">
         <input type="checkbox" name="consentimento_lgpd" class="mt-0.5 h-4 w-4 shrink-0 accent-[#C85A32]" />
-        <span>Declaro que represento esta casa (ou tenho autorização da liderança) e <strong>consinto</strong> com o tratamento destes dados — incluindo a informação sobre convicção religiosa, dado sensível pela LGPD (art. 11) — para fins de mapeamento, censo e defesa contra a intolerância religiosa. Posso pedir correção ou exclusão a qualquer momento.</span>
+        <span>Declaro que represento esta casa (ou tenho autorização da liderança) e <strong>consinto</strong> com o tratamento destes dados — incluindo a informação sobre convicção religiosa, dado sensível pela LGPD (art. 11) — para fins de mapeamento, censo e defesa contra a intolerância religiosa. Posso pedir correção ou exclusão a qualquer momento, como explica a <a href="/privacidade.html" target="_blank" class="font-semibold text-ouro underline">política de privacidade</a>.</span>
       </label>
       <p class="erro mt-2 hidden text-xs text-red-300"></p>
     </div>
@@ -246,7 +247,7 @@ function telaSucesso(form, resposta) {
       <span class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-ouro/15 text-ouro"><i data-lucide="check" class="h-8 w-8"></i></span>
       <h3 class="mt-4 font-display text-2xl font-bold">Axé! Cadastro recebido.</h3>
       <p class="mx-auto mt-2 max-w-md text-sm text-stone-300">${esc(resposta.mensagem)}</p>
-      <p class="mt-4 text-xs uppercase tracking-widest text-stone-500">Protocolo <strong class="text-algodao">${esc(resposta.protocolo)}</strong></p>
+      <p class="mt-4 text-xs uppercase tracking-widest text-stone-400">Protocolo <strong class="text-algodao">${esc(resposta.protocolo)}</strong></p>
       <button type="button" class="btn-ghost mt-6" data-fechar>Voltar ao mapa</button>
     </div>`;
   icones();
@@ -290,12 +291,21 @@ export function iniciarCadastro() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     limparErros(form);
+    const dados = coletar(form);
+    // Mesmas regras do servidor, antes de enviar: erros aparecem na hora e
+    // não gastam o limite de envios.
+    const { erros } = validarCadastro(dados);
+    if (erros) {
+      mostrarErros(form, erros);
+      toast('Revise os campos destacados.', 'erro');
+      return;
+    }
     const botao = form.querySelector('[type="submit"]');
     botao.disabled = true;
     botao.innerHTML = '<i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i> Enviando…';
     icones();
     try {
-      const resposta = await api.cadastrar(coletar(form));
+      const resposta = await api.cadastrar(dados);
       telaSucesso(form, resposta);
       form.scrollTop = 0;
     } catch (err) {

@@ -3,3 +3,5 @@
 ADMIN_TOKEN=
 # Hash da senha que libera contatos restritos. Gere com: npm run hash-senha
 ACESSO_RESTRITO_HASH=
+# Segredo para anonimizar IPs no limite de tentativas. Gere com: openssl rand -hex 32
+IP_SALT=

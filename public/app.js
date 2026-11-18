@@ -5,7 +5,7 @@ import { abrirDetalhe, detalheAberto, fecharDetalhe } from './js/detalhe.js';
 import { criarMapa, enquadrar, focarCasa, invalidar, marcarAtivo, renderizarCasas } from './js/map.js';
 import { iniciarCadastro } from './js/cadastro.js';
 import { renderizarCenso } from './js/censo.js';
-import { debounce, ehMobile, esc, icones, normalizar, toast } from './js/utils.js';
+import { debounce, ehMobile, esc, icones, normalizar } from './js/utils.js';
 
 const estado = {
   casas: [],
@@ -113,7 +113,7 @@ function renderizarLista(casas) {
             <span class="min-w-0 flex-1">
               <span class="block truncate font-semibold">${esc(c.nome_casa)}</span>
               <span class="block truncate text-xs text-stone-400">${esc([c.nacao_linha || c.vertente, c.orixa_guia_regente].filter(Boolean).join(' · '))}</span>
-              <span class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-500">
+              <span class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-400">
                 <span class="inline-flex items-center gap-1"><i data-lucide="${aproximado ? 'circle-dashed' : 'map-pin'}" class="h-3 w-3"></i>${esc(c.bairro)}${aproximado ? ' (aprox.)' : ''}</span>
                 ${c.ano_fundacao ? `<span class="inline-flex items-center gap-1"><i data-lucide="landmark" class="h-3 w-3"></i>desde ${esc(c.ano_fundacao)}</span>` : ''}
                 ${c.acoes_sociais.length ? `<span class="inline-flex items-center gap-1"><i data-lucide="hand-heart" class="h-3 w-3"></i>${c.acoes_sociais.length} ações sociais</span>` : ''}
@@ -153,6 +153,8 @@ function atualizar({ enquadrar: deveEnquadrar = false } = {}) {
 function selecionar(id, { voar = true } = {}) {
   const casa = estado.casas.find((c) => c.id === id);
   if (!casa) return;
+  // Guarda de onde a pessoa veio para devolver o foco ao fechar a ficha.
+  if (!document.getElementById('drawer').contains(document.activeElement)) estado.origemFoco = document.activeElement;
   estado.selecionadaId = id;
   document.querySelectorAll('.card-casa').forEach((b) => b.setAttribute('aria-current', String(b.dataset.id === id)));
   abrirDetalhe(casa, { aoFechar: desselecionar });
@@ -168,6 +170,12 @@ function desselecionar() {
   marcarAtivo(null);
   document.querySelectorAll('.card-casa').forEach((b) => b.setAttribute('aria-current', 'false'));
   history.replaceState(null, '', location.pathname);
+  // Devolve o foco ao card (ou elemento) que abriu a ficha; se ele sumiu
+  // (filtro mudou), vai para a lista.
+  const origem = estado.origemFoco;
+  estado.origemFoco = null;
+  if (origem?.isConnected && origem !== document.body) origem.focus({ preventScroll: true });
+  else $('lista-casas').querySelector('.card-casa')?.focus({ preventScroll: true });
 }
 
 // ============================== Bottom sheet (mobile) ==============================
@@ -232,9 +240,14 @@ function iniciarBottomSheet() {
 // ============================== Modais ==============================
 let ultimoFoco = null;
 
+// Enquanto uma janela está aberta, o resto da página fica "inerte": o Tab não
+// sai da janela e leitores de tela não leem o fundo.
+const FUNDO = () => [document.querySelector('header'), document.querySelector('main'), document.querySelector('a[href="#lista-casas"]')];
+
 export function abrirModal(id) {
   ultimoFoco = document.activeElement;
   const modal = $(id);
+  FUNDO().forEach((el) => el && (el.inert = true));
   modal.classList.add('aberto');
   modal.querySelector('input, select, textarea, button')?.focus({ preventScroll: true });
   modal.dispatchEvent(new CustomEvent('modal:aberto'));
@@ -242,6 +255,7 @@ export function abrirModal(id) {
 
 function fecharModal(modal) {
   modal.classList.remove('aberto');
+  if (!document.querySelector('.modal.aberto')) FUNDO().forEach((el) => el && (el.inert = false));
   ultimoFoco?.focus?.({ preventScroll: true });
 }
 
@@ -261,13 +275,41 @@ function iniciarModais() {
 
   $('modal-censo').addEventListener('modal:aberto', async () => {
     try {
-      const stats = await api.estatisticas();
-      estado.estatisticas = stats;
-      renderizarCenso($('censo-conteudo'), stats);
+      // Reaproveita as estatísticas que vieram com /api/terreiros (até 5 min).
+      if (!estado.estatisticas || Date.now() - estado.estatisticasEm > 5 * 60 * 1000) {
+        estado.estatisticas = await api.estatisticas();
+        estado.estatisticasEm = Date.now();
+      }
+      renderizarCenso($('censo-conteudo'), estado.estatisticas);
     } catch {
       $('censo-conteudo').innerHTML = '<p class="text-sm text-red-300">Não foi possível carregar o censo agora.</p>';
     }
   });
+}
+
+// ============================== Carregamento ==============================
+async function carregarCasas() {
+  const lista = $('lista-casas');
+  try {
+    const { terreiros, estatisticas } = await api.terreiros();
+    estado.casas = terreiros;
+    estado.estatisticas = estatisticas;
+    estado.estatisticasEm = Date.now();
+    lista.removeAttribute('aria-busy');
+    return true;
+  } catch (err) {
+    lista.removeAttribute('aria-busy');
+    $('contagem').textContent = 'Não foi possível carregar as casas.';
+    lista.innerHTML = `
+      <li class="rounded-2xl border border-dashed border-white/15 p-6 text-center text-sm text-stone-300">
+        <i data-lucide="wifi-off" class="mx-auto mb-2 h-6 w-6 text-ouro"></i>
+        <p>${esc(err.message)}</p>
+        <button type="button" id="tentar-novamente" class="btn-ghost mt-4"><i data-lucide="refresh-cw" class="h-4 w-4"></i>Tentar novamente</button>
+      </li>`;
+    icones();
+    $('tentar-novamente').addEventListener('click', () => location.reload());
+    return false;
+  }
 }
 
 // ============================== Inicialização ==============================
@@ -283,16 +325,7 @@ async function iniciar() {
     if (card) selecionar(card.dataset.id);
   });
 
-  try {
-    const { terreiros, estatisticas } = await api.terreiros();
-    estado.casas = terreiros;
-    estado.estatisticas = estatisticas;
-  } catch (err) {
-    $('contagem').textContent = 'Não foi possível carregar as casas.';
-    toast(err.message, 'erro');
-    return;
-  }
-
+  if (!(await carregarCasas())) return;
   montarFiltros();
   atualizar();
   enquadrar(estado.casas);
