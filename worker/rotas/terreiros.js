@@ -13,6 +13,7 @@
 // =============================================================================
 import { assertSemCamposPrivados, toPublicTerreiro } from '../../lib/privacy.js';
 import { carregarEstatisticas } from '../../lib/stats.js';
+import { comCache } from '../cache.js';
 import { CACHE_PUBLICO, json, metodoNaoPermitido } from '../http.js';
 
 const SQL_PUBLICO = `
@@ -23,8 +24,12 @@ const SQL_PUBLICO = `
          contato_restrito
   FROM vw_terreiros_publicos`;
 
-export async function terreiros(request, env, url) {
+export async function terreiros(request, env, url, ctx) {
   if (request.method !== 'GET') return metodoNaoPermitido(['GET']);
+  return comCache(request, ctx, () => gerar(env, url));
+}
+
+async function gerar(env, url) {
 
   const slug = url.searchParams.get('slug');
   if (slug) {

@@ -1,3 +1,5 @@
+export { formatarTelefone } from './dominio.js';
+
 // Utilitários do front-end.
 
 // Escapa texto antes de inserir em HTML — todo dado vindo da API passa por aqui.
@@ -35,12 +37,6 @@ export function linkInstagramSeguro(url) {
   }
 }
 
-export function formatarTelefone(numero) {
-  const d = String(numero || '').replace(/\D/g, '').replace(/^55/, '');
-  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-  return numero;
-}
 
 // Substitui os <i data-lucide="..."> recém-inseridos por SVGs.
 export function icones() {

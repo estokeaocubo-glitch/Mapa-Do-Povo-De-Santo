@@ -1,27 +1,21 @@
 -- =============================================================================
 -- Mapa do Povo de Santo — Petrópolis/RJ
--- Schema Cloudflare D1 (SQLite)
+-- Migração inicial do Cloudflare D1 (SQLite)
 --
---   Local:     npx wrangler d1 execute mapa-povo-de-santo --local  --file db/schema.sql
---   Produção:  npx wrangler d1 execute mapa-povo-de-santo --remote --file db/schema.sql
---   (atalhos: npm run db:schema:local / npm run db:schema:remote)
---
--- ATENÇÃO: este script RECRIA as tabelas (apaga os dados). Rode só na criação.
+--   Local:     npm run db:migrar:local
+--   Produção:  npm run db:migrar:remote
+--   (o wrangler registra quais migrações já rodaram; nada é apagado)
 --
 -- PRINCÍPIOS DE SEGURANÇA (LGPD art. 11 — dado religioso é dado sensível):
 --   1. Coordenadas reais e endereço completo NUNCA saem do banco para rotas
 --      públicas: a API pública lê apenas a VIEW vw_terreiros_publicos.
---   2. A coordenada pública ofuscada é gerada UMA VEZ, na gravação (Worker ou
+--   2. A coordenada pública ofuscada (200–450 m do ponto real, dentro do
+--      círculo de 500 m mostrado no mapa) é gerada UMA VEZ, na gravação (Worker ou
 --      script de carga). Se ela fosse sorteada a cada requisição, bastaria
 --      consultar a API várias vezes e tirar a média para achar o endereço real.
 --      As CHECK constraints abaixo impedem gravar uma combinação insegura.
 --   3. O D1 não é acessível pela internet: só o Worker (binding DB) o consulta.
 -- =============================================================================
-
-DROP VIEW IF EXISTS vw_terreiros_publicos;
-DROP VIEW IF EXISTS vw_terreiros_censo;
-DROP TABLE IF EXISTS terreiros;
-DROP TABLE IF EXISTS tentativas;
 
 CREATE TABLE terreiros (
   id                        TEXT PRIMARY KEY,                -- UUID gerado no Worker/script
@@ -78,9 +72,9 @@ CREATE TABLE terreiros (
     OR (nivel_privacidade = 'Aproximado'
        AND lat_publica IS NOT NULL AND lng_publica IS NOT NULL
        AND (lat_publica <> lat_real OR lng_publica <> lng_real)
-       -- deslocamento mínimo de ~300 m (0,0027° ≈ 300 m de latitude)
+       -- deslocamento mínimo de ~170 m (0,0015° de latitude); o Worker usa 200–450 m
        AND ((lat_publica - lat_real) * (lat_publica - lat_real)
-          + (lng_publica - lng_real) * (lng_publica - lng_real)) > 0.0027 * 0.0027 * 0.8)
+          + (lng_publica - lng_real) * (lng_publica - lng_real)) > 0.0015 * 0.0015)
     OR (nivel_privacidade = 'Oculto_Apenas_Censo'
        AND lat_publica IS NULL AND lng_publica IS NULL)
   )
@@ -136,11 +130,11 @@ FROM terreiros
 WHERE status_moderacao = 'Aprovado';
 
 -- =============================================================================
--- Limite de tentativas (senha, cadastro, admin) — global, entre todas as
--- instâncias do Worker. Guarda só um HASH do IP, nunca o IP em si.
+-- Limite de tentativas (senha errada, cadastros aceitos, token de admin errado)
+-- — global, entre todas as instâncias do Worker. Guarda só um HMAC do IP.
 -- =============================================================================
 CREATE TABLE tentativas (
-  chave  TEXT NOT NULL,        -- ex.: 'desbloquear:<sha256 do ip>'
+  chave  TEXT NOT NULL,        -- ex.: 'desbloquear:<HMAC do ip com o secret IP_SALT>'
   em     INTEGER NOT NULL      -- epoch em ms
 );
 CREATE INDEX idx_tentativas ON tentativas (chave, em);

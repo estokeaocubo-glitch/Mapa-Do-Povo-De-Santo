@@ -1,13 +1,5 @@
 // Constantes do front-end (espelham os ENUMs do banco).
-export const VERTENTES = ['Umbanda', 'Candomblé', 'Omolokô', 'Ifá', 'Kimbanda', 'Misto/Outros'];
-
-export const DISTRITOS = [
-  '1º Distrito - Petrópolis (Centro)',
-  '2º Distrito - Cascatinha',
-  '3º Distrito - Itaipava',
-  '4º Distrito - Pedro do Rio',
-  '5º Distrito - Posse',
-];
+export { VERTENTES, DISTRITOS } from './dominio.js';
 
 // Segmentos = cor do pino + filtro rápido. Cor + letra no pino: a identidade
 // não depende só da cor (acessível para daltonismo).
@@ -15,7 +7,7 @@ export const SEGMENTOS = {
   umbanda:   { rotulo: 'Umbanda',          cor: '#5B8DEF', letra: 'U' },
   candomble: { rotulo: 'Candomblé',        cor: '#C49A22', anel: '#C85A32', letra: 'C' },
   outras:    { rotulo: 'Outras vertentes', cor: '#3A9460', letra: 'O' },
-  axe:       { rotulo: 'Economia do Axé',  cor: '#9468E6', letra: '$' },
+  axe:       { rotulo: 'Economia do Axé',  cor: '#9468E6', letra: 'E' },
 };
 
 export function segmentoDe(casa) {
@@ -52,7 +44,7 @@ export const TEXTO_PRIVACIDADE = {
   Aproximado: {
     titulo: 'Área aproximada (recomendado)',
     icone: 'circle-dashed',
-    texto: 'O mapa mostra só um círculo de ~500 m em torno de um ponto deslocado de 400 a 800 m em direção aleatória, mais o bairro. O endereço nunca sai do servidor: quem quiser visitar pede pelo WhatsApp da casa.',
+    texto: 'O mapa mostra só o bairro e um círculo de ~500 m que contém a casa, sem revelar onde ela fica dentro dele. O endereço nunca sai do servidor: quem quiser visitar pede pelo WhatsApp da casa.',
   },
   Oculto_Apenas_Censo: {
     titulo: 'Oculto — apenas censo',

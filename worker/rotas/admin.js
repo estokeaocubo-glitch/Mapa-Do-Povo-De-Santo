@@ -4,7 +4,8 @@
 //   DELETE /api/admin?id=<uuid>               → exclusão definitiva (LGPD art. 18, VI)
 // Autenticação: header `Authorization: Bearer <ADMIN_TOKEN>` (secret do Worker).
 import { STATUS_MODERACAO } from '../../lib/constants.js';
-import { dentroDoLimite } from '../../lib/limite.js';
+import { excedeuLimite, registrarTentativa } from '../../lib/limite.js';
+import { limparCachePublico } from '../cache.js';
 import { iguaisTempoConstante, sha256 } from '../../lib/senha.js';
 import { ipDe, json, lerJson, metodoNaoPermitido, NO_STORE } from '../http.js';
 
@@ -22,12 +23,14 @@ export async function admin(request, env, url) {
   if (!env.ADMIN_TOKEN || env.ADMIN_TOKEN.length < 24) {
     return json(503, { erro: 'Moderação desabilitada: defina o secret ADMIN_TOKEN (mín. 24 caracteres).' }, NO_STORE);
   }
+  const ip = ipDe(request);
+  // Só tokens errados contam para o limite (contra força bruta).
+  if (await excedeuLimite(env, 'admin', ip, { limite: 20, janelaMs: 15 * 60 * 1000 })) {
+    return json(429, { erro: 'Muitas tentativas com token inválido. Aguarde 15 minutos.' }, NO_STORE);
+  }
   if (!(await autorizado(request, env.ADMIN_TOKEN))) {
-    // Só tentativas inválidas contam para o limite (contra força bruta).
-    if (!(await dentroDoLimite(env.DB, 'admin', ipDe(request), { limite: 20, janelaMs: 15 * 60 * 1000 }))) {
-      return json(429, { erro: 'Muitas tentativas.' }, NO_STORE);
-    }
-    return json(401, { erro: 'Não autorizado.' }, { ...NO_STORE, 'WWW-Authenticate': 'Bearer' });
+    await registrarTentativa(env, 'admin', ip);
+    return json(401, { erro: 'Token de moderação inválido.' }, { ...NO_STORE, 'WWW-Authenticate': 'Bearer' });
   }
 
   if (request.method === 'GET') {
@@ -48,6 +51,7 @@ export async function admin(request, env, url) {
       .prepare('UPDATE terreiros SET status_moderacao = ?2 WHERE id = ?1 RETURNING id, nome_casa, status_moderacao')
       .bind(id, status_moderacao).first();
     if (!registro) return json(404, { erro: 'Registro não encontrado.' }, NO_STORE);
+    await limparCachePublico(request);
     return json(200, { ok: true, registro }, NO_STORE);
   }
 
@@ -56,6 +60,7 @@ export async function admin(request, env, url) {
     if (!UUID.test(id || '')) return json(400, { erro: 'id inválido.' }, NO_STORE);
     const apagado = await env.DB.prepare('DELETE FROM terreiros WHERE id = ?1 RETURNING id').bind(id).first();
     if (!apagado) return json(404, { erro: 'Registro não encontrado.' }, NO_STORE);
+    await limparCachePublico(request);
     return json(200, { ok: true }, NO_STORE);
   }
 

@@ -1,14 +1,36 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Só os arquivos do próprio projeto geram classes (nada de vendor/node_modules). */
+@source not "../public/vendor";
+@source not "../public/assets";
 
 /* ===================== Design system: Ancestralidade Contemporânea ===================== */
+@theme {
+  --color-breu: #12100e;
+  --color-carvao: #1c1917;
+  --color-terracota: #c85a32;
+  --color-terracota-400: #d97850;
+  --color-terracota-600: #a8461f;   /* botões: branco sobre ela ≈ 5,9:1 (WCAG AA) */
+  --color-terracota-700: #8f3a18;
+  --color-ouro: #d4af37;
+  --color-ouro-300: #e6cb6e;
+  --color-algodao: #f5f5f0;
+  /* Cores dos pinos por segmento (validadas para daltonismo sobre fundo escuro) */
+  --color-umbanda: #5b8def;
+  --color-candomble: #c49a22;
+  --color-mata: #3a9460;
+  --color-axe: #9468e6;
+  --color-whatsapp: #15803d;        /* branco sobre ela ≈ 5,0:1 */
+  --color-whatsapp-hover: #166534;
+
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-display: "Cinzel", Georgia, serif;
+}
+
 :root {
-  --breu: #12100e;
-  --carvao: #1c1917;
   --terracota: #c85a32;
   --ouro: #d4af37;
-  --algodao: #f5f5f0;
+  --breu: #12100e;
   --peek: 172px;               /* altura visível do bottom sheet recolhido */
 }
 
@@ -18,40 +40,43 @@ body {
   overscroll-behavior: none;
 }
 
-@layer components {
-  .glass {
-    @apply backdrop-blur-md bg-stone-900/80 border border-white/10 shadow-2xl shadow-black/40;
-  }
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
-           transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ouro/70 disabled:opacity-50;
-  }
-  .btn-primary { @apply btn bg-terracota text-white hover:bg-terracota-400; }
-  .btn-ghost { @apply btn border border-white/10 bg-white/5 text-algodao hover:bg-white/10; }
-  .btn-gold { @apply btn bg-ouro text-breu hover:bg-ouro-300; }
-  .btn-whatsapp { @apply btn bg-[#1F9D55] text-white hover:bg-[#25b864]; }
-
-  .field {
-    @apply w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm text-algodao
-           placeholder:text-stone-500 focus:border-ouro/60 focus:outline-none focus:ring-2 focus:ring-ouro/20;
-  }
-  select.field { @apply appearance-none pr-9 bg-no-repeat; background-position: right .75rem center; background-size: 1rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
-  .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-stone-400; }
-  .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium
-           text-stone-300 transition hover:bg-white/10;
-  }
-  .chip[aria-pressed='true'] { @apply border-ouro/60 bg-ouro/15 text-algodao; }
-  .dot { @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full; }
-  .section-title { @apply font-display text-sm tracking-[0.18em] text-ouro; }
-  .card-casa {
-    @apply w-full rounded-2xl border border-white/5 bg-white/[0.03] p-3.5 text-left transition
-           hover:border-ouro/30 hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-ouro/60;
-  }
-  .card-casa[aria-current='true'] { @apply border-ouro/50 bg-ouro/10; }
-  .bento { @apply rounded-3xl border border-white/10 bg-white/[0.04] p-5; }
+/* ===================== Componentes ===================== */
+@utility glass {
+  @apply backdrop-blur-md bg-stone-900/80 border border-white/10 shadow-2xl shadow-black/40;
 }
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+         transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ouro/70 disabled:opacity-50;
+}
+@utility btn-primary { @apply btn bg-terracota-600 text-white hover:bg-terracota-700; }
+@utility btn-ghost { @apply btn border border-white/10 bg-white/5 text-algodao hover:bg-white/10; }
+@utility btn-gold { @apply btn bg-ouro text-breu hover:bg-ouro-300; }
+@utility btn-whatsapp { @apply btn bg-whatsapp text-white hover:bg-whatsapp-hover; }
+
+@utility field {
+  @apply w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm text-algodao
+         placeholder:text-stone-400 focus:border-ouro/60 focus:outline-none focus:ring-2 focus:ring-ouro/20;
+  &[aria-invalid='true'] { @apply border-red-400/70; }
+}
+select.field {
+  @apply appearance-none pr-9 bg-no-repeat;
+  background-position: right .75rem center; background-size: 1rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+@utility label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-stone-400; }
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium
+         text-stone-300 transition hover:bg-white/10;
+  &[aria-pressed='true'] { @apply border-ouro/60 bg-ouro/15 text-algodao; }
+}
+@utility dot { @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full; }
+@utility section-title { @apply font-display text-sm tracking-[0.18em] text-ouro; }
+@utility card-casa {
+  @apply w-full cursor-pointer rounded-2xl border border-white/5 bg-white/[0.03] p-3.5 text-left transition
+         hover:border-ouro/30 hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-ouro/60;
+  &[aria-current='true'] { @apply border-ouro/50 bg-ouro/10; }
+}
+@utility bento { @apply rounded-3xl border border-white/10 bg-white/[0.04] p-5; }
 
 /* Ornamento: faixa inspirada em padronagens de tecidos africanos */
 .kente {
@@ -60,16 +85,20 @@ body {
     #3a9460 30px 38px, var(--breu) 38px 42px);
 }
 
+/* Esqueleto de carregamento */
+.esqueleto { @apply rounded-2xl bg-white/[0.05] animate-pulse; height: 88px; }
+
 /* ===================== Mapa ===================== */
 #mapa { position: fixed; inset: 0; z-index: 0; background: #0d0c0b; }
 .leaflet-container { font-family: inherit; background: #0d0c0b; }
 .leaflet-control-zoom a { @apply !border-white/10 !bg-stone-900/90 !text-algodao; }
-.leaflet-control-attribution { @apply !bg-black/60 !text-stone-400 text-[10px]; }
-.leaflet-control-attribution a { @apply !text-stone-300; }
+.leaflet-control-attribution { @apply !bg-black/70 !text-stone-300 text-[10px]; }
+.leaflet-control-attribution a { @apply !text-stone-200; }
 .leaflet-tooltip.tooltip-casa {
   @apply rounded-lg border border-white/10 bg-stone-900/95 px-2.5 py-1.5 text-xs font-semibold text-algodao shadow-xl;
 }
 .leaflet-tooltip.tooltip-casa::before { display: none; }
+.leaflet-interactive:focus-visible { outline: 3px solid var(--ouro); outline-offset: 2px; }
 
 /* Pino: gota com inicial da vertente (cor + letra = identidade não depende só da cor) */
 .pino { position: relative; width: 34px; height: 44px; }
@@ -87,7 +116,7 @@ body {
 
 .marker-cluster-custom {
   display: grid; place-items: center; border-radius: 9999px;
-  background: rgba(200, 90, 50, .9); color: #fff; font-weight: 700; font-size: 13px;
+  background: #a8461f; color: #fff; font-weight: 700; font-size: 13px;
   border: 2px solid rgba(245, 245, 240, .85); box-shadow: 0 0 0 6px rgba(200, 90, 50, .25);
 }
 
@@ -112,6 +141,14 @@ body {
 }
 #drawer.aberto { transform: translateY(0); visibility: visible; transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
 
+/* Celular: zoom e créditos do mapa sobem acima do bottom sheet recolhido
+   (a atribuição OSM/CARTO precisa ficar visível — licença ODbL). */
+@media (max-width: 767px) {
+  .leaflet-bottom { bottom: calc(var(--peek) + 4px); }
+  body:has(#painel:not([data-estado='recolhido'])) .leaflet-bottom,
+  body:has(#drawer.aberto) .leaflet-bottom { visibility: hidden; }
+}
+
 @media (min-width: 768px) {
   #painel {
     left: 1rem; right: auto; top: 5.5rem; bottom: 1rem; width: 380px; height: auto;
@@ -123,6 +160,9 @@ body {
   }
   #drawer.aberto { transform: translateX(0); }
   .alca { display: none; }
+  /* Com a ficha aberta, o zoom e os créditos vão para a esquerda dela. */
+  .leaflet-right { transition: right .35s; }
+  body:has(#drawer.aberto) .leaflet-right { right: 444px; }
 }
 
 /* ===================== Modais ===================== */
@@ -135,10 +175,18 @@ body {
 /* Cartões de privacidade no formulário */
 .opcao-privacidade { @apply cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/25; }
 .opcao-privacidade:has(input:checked) { @apply border-ouro/70 bg-ouro/10; }
+.opcao-privacidade:has(input:focus-visible) { @apply ring-2 ring-ouro/60; }
 
 /* Barras do censo */
 .barra { height: 10px; border-radius: 0 4px 4px 0; background: var(--cor, var(--terracota)); min-width: 4px; }
+.barra.suprimida { background: repeating-linear-gradient(45deg, var(--cor, var(--terracota)) 0 3px, transparent 3px 6px); }
 .trilho { background: rgba(255, 255, 255, .06); border-radius: 0 4px 4px 0; }
+
+/* Páginas de texto (privacidade) */
+.prosa h2 { @apply mt-8 font-display text-lg font-bold text-ouro; }
+.prosa p, .prosa li { @apply mt-3 text-sm leading-relaxed text-stone-300; }
+.prosa ul { @apply list-disc pl-5; }
+.prosa a { @apply text-ouro underline; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }

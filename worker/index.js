@@ -21,10 +21,11 @@ const SEGURANCA = {
   'Referrer-Policy': 'no-referrer',
   'X-Frame-Options': 'DENY',
   'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const rota = ROTAS[url.pathname.replace(/\/$/, '')];
 
@@ -34,7 +35,7 @@ export default {
     }
 
     try {
-      return comSeguranca(await rota(request, env, url));
+      return comSeguranca(await rota(request, env, url, ctx));
     } catch (err) {
       if (err instanceof HttpError) {
         return comSeguranca(json(err.status, { erro: err.message, ...(err.details ? { detalhes: err.details } : {}) }));
@@ -47,6 +48,8 @@ export default {
 };
 
 function comSeguranca(resposta) {
-  for (const [k, v] of Object.entries(SEGURANCA)) resposta.headers.set(k, v);
-  return resposta;
+  // Cópia: respostas vindas do cache têm cabeçalhos imutáveis.
+  const copia = new Response(resposta.body, resposta);
+  for (const [k, v] of Object.entries(SEGURANCA)) copia.headers.set(k, v);
+  return copia;
 }

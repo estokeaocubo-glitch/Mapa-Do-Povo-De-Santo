@@ -1,15 +1,20 @@
 // POST /api/cadastro → envia uma casa para a FILA DE MODERAÇÃO.
 // O status é sempre 'Pendente'; nada do que o cliente mandar publica direto.
-import { dentroDoLimite } from '../../lib/limite.js';
+import { excedeuLimite, registrarTentativa } from '../../lib/limite.js';
 import { coordenadaPublica } from '../../lib/privacy.js';
-import { slugify, validarCadastro } from '../../lib/validation.js';
+import { normalizarNome, slugify, validarCadastro } from '../../lib/validation.js';
 import { ipDe, json, lerJson, metodoNaoPermitido } from '../http.js';
+
+// Conta apenas cadastros ACEITOS: quem erra o preenchimento pode corrigir e
+// reenviar quantas vezes precisar, sem ser bloqueado.
+const LIMITE = { limite: 5, janelaMs: 60 * 60 * 1000 };
 
 export async function cadastro(request, env) {
   if (request.method !== 'POST') return metodoNaoPermitido(['POST']);
+  const ip = ipDe(request);
 
-  if (!(await dentroDoLimite(env.DB, 'cadastro', ipDe(request), { limite: 5, janelaMs: 60 * 60 * 1000 }))) {
-    return json(429, { erro: 'Muitos envios a partir desta conexão. Tente novamente mais tarde.' });
+  if (await excedeuLimite(env, 'cadastro', ip, LIMITE)) {
+    return json(429, { erro: 'Esta conexão já enviou 5 cadastros na última hora. Tente novamente mais tarde.' });
   }
 
   const body = await lerJson(request);
@@ -18,6 +23,18 @@ export async function cadastro(request, env) {
 
   const { dados, erros } = validarCadastro(body);
   if (erros) return json(422, { erro: 'Revise os campos destacados.', detalhes: erros });
+
+  // Duplicata: mesmo nome (sem acentos/caixa) e mesmo bairro, ainda não rejeitado.
+  const { results: mesmoDistrito } = await env.DB
+    .prepare(`SELECT nome_casa, bairro FROM terreiros WHERE distrito = ?1 AND status_moderacao <> 'Rejeitado'`)
+    .bind(dados.distrito).all();
+  const duplicada = mesmoDistrito.some((r) =>
+    normalizarNome(r.nome_casa) === normalizarNome(dados.nome_casa) && normalizarNome(r.bairro) === normalizarNome(dados.bairro));
+  if (duplicada) {
+    return json(409, {
+      erro: 'Esta casa já foi cadastrada (ou está aguardando moderação). Para corrigir dados, use o contato da página de privacidade.',
+    });
+  }
 
   const id = crypto.randomUUID();
   const slug = `${slugify(dados.nome_casa)}-${id.slice(0, 6)}`;
@@ -41,6 +58,7 @@ export async function cadastro(request, env) {
     dados.historia_resumo, JSON.stringify(dados.calendario_giras), JSON.stringify(dados.acoes_sociais),
     dados.whatsapp_contato, dados.instagram_url,
   ).run();
+  await registrarTentativa(env, 'cadastro', ip);
 
   return json(201, {
     ok: true,
