@@ -9,8 +9,9 @@ Mapa interativo, memória histórica e censo comunitário das casas de Umbanda, 
 ```bash
 npm install
 cp .dev.vars.example .dev.vars   # preencha ADMIN_TOKEN e ACESSO_RESTRITO_HASH
-npm run db:local                 # cria o D1 local com os dados fictícios
+npm run db:local                 # aplica as migrações no D1 local e carrega os dados fictícios
 npm run dev                      # http://localhost:8787
+npm test                         # 15 testes (privacidade, validação, senha, sessão, censo, Worker)
 ```
 
 ## Publicar na Cloudflare (primeira vez)
@@ -18,7 +19,7 @@ npm run dev                      # http://localhost:8787
 ```bash
 npx wrangler login                              # abre o navegador para entrar na sua conta
 npx wrangler d1 create mapa-povo-de-santo       # copie o database_id para wrangler.jsonc
-npm run db:schema:remote                        # cria as tabelas (APAGA dados: só na 1ª vez)
+npm run db:migrar:remote                        # aplica as migrações (seguro rodar de novo)
 
 # Casas reais: copie o modelo, preencha e carregue (o arquivo fica fora do git)
 cp db/seed-real.example.json db/seed-real.json
@@ -27,6 +28,8 @@ npm run db:seed-real:remote
 npm run hash-senha                              # gera o hash da senha de acesso
 npx wrangler secret put ACESSO_RESTRITO_HASH    # cole o hash
 openssl rand -hex 32 | npx wrangler secret put ADMIN_TOKEN
+openssl rand -hex 32 | npx wrangler secret put IP_SALT
+# Antes de publicar: preencha responsável e contato em public/privacidade.html (item 1).
 
 npm run deploy                                  # publica em https://mapa-povo-de-santo.<sua-conta>.workers.dev
 ```
@@ -42,9 +45,14 @@ worker/rotas/              terreiros, estatisticas, cadastro, desbloquear, admin
 lib/privacy.js             ofuscação de coordenadas + saneamento por lista branca
 lib/senha.js               hash PBKDF2 da senha, comparação em tempo constante
 lib/limite.js              limite de tentativas guardado no D1 (IP só como hash)
-lib/validation.js          validação do formulário público
+lib/sessao.js              sessão de desbloqueio (cookie HttpOnly assinado, 30 min)
+public/js/validacao.js     validação do cadastro, a MESMA no navegador e no Worker
+public/js/dominio.js       listas de vertentes, distritos etc., compartilhadas
+public/admin.html          painel de moderação (token ADMIN_TOKEN)
+public/privacidade.html    política de privacidade (LGPD)
+test/                      testes com node:test; node:sqlite faz o papel do D1
 lib/stats.js               censo agregado
-db/schema.sql              tabelas, CHECKs de segurança, gatilhos e views (SQLite/D1)
+migrations/                tabelas, CHECKs de segurança, gatilhos e views (migrações D1)
 db/seed-ficticio.json      casas fictícias para teste
 db/seed-real.example.json  modelo para as casas reais
 scripts/gerar-seed.mjs     JSON → SQL, sorteando a coordenada ofuscada uma única vez
@@ -61,24 +69,26 @@ public/                    site: index.html, app.js, js/, _headers (CSP etc.)
 | `POST /api/desbloquear` | `{slug, senha}` → WhatsApp/endereço de casas com contato restrito |
 | `GET/PATCH/DELETE /api/admin` | moderação, com `Authorization: Bearer <ADMIN_TOKEN>` |
 
-Aprovar um cadastro:
-
-```bash
-curl -X PATCH https://SEU-SITE/api/admin -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H 'content-type: application/json' -d '{"id":"<uuid>","status_moderacao":"Aprovado"}'
-```
+A moderação é feita em `/admin.html`: você cola o `ADMIN_TOKEN` e aprova, rejeita ou exclui cada cadastro. Recomenda-se proteger essa página também com Cloudflare Access.
 
 ## Travas de privacidade
 
 | Nível | No mapa | Endereço | Coordenada enviada ao navegador |
 |---|---|---|---|
 | `Exato` | pino | visível | real |
-| `Aproximado` | círculo de 500 m | nunca | deslocada 400–800 m, sorteada **uma vez** na gravação |
+| `Aproximado` | círculo de 500 m (sempre contém a casa) | nunca | deslocada 200–450 m, sorteada **uma vez** na gravação |
 | `Oculto_Apenas_Censo` | não aparece | nunca | nenhuma (só conta no censo, anonimizada) |
 
 - A API pública lê apenas a view `vw_terreiros_publicos`, que não tem `lat_real`, `lng_real` nem o endereço das casas aproximadas. `toPublicTerreiro()` remonta cada registro por lista branca, e `assertSemCamposPrivados()` aborta a resposta se algo escapar.
 - O próprio banco recusa combinações inseguras: uma casa `Aproximado` sem deslocamento, ou uma `Oculta` com coordenada pública. Um gatilho também impede alterar a coordenada pública depois de gravada; se ela pudesse ser sorteada de novo, várias versões permitiriam triangular o endereço.
-- `contato_restrito = 1` esconde WhatsApp, Instagram e endereço da listagem. Eles só saem por `/api/desbloquear`, que confere a senha contra um hash PBKDF2 (guardado como secret da Cloudflare, nunca no código) e aceita 8 tentativas a cada 15 minutos por IP. O limite vale para todas as instâncias do Worker.
+- `contato_restrito = 1` esconde WhatsApp, Instagram e endereço da listagem. Eles só saem por `/api/desbloquear`, que confere a senha contra um hash PBKDF2 (guardado como secret da Cloudflare, nunca no código). Só senhas **erradas** contam para o limite (8 a cada 15 min por IP). Depois de acertar uma vez, um cookie HttpOnly assinado libera as outras casas por 30 minutos.
+- O censo não publica o número exato de grupos com 1 ou 2 casas quando alguma delas é oculta: mostra "menos de 3".
+- O cadastro tem limite de 5 envios **aceitos** por hora; erros de preenchimento não contam. Duplicatas (mesmo nome e bairro) são recusadas.
 - O D1 não é acessível pela internet, apenas pelo Worker.
 - O cadastro não usa geocodificação externa: a casa é marcada no mapa, e o endereço não é enviado a terceiros.
-- Cabeçalhos de segurança: CSP sem scripts de terceiros e `Referrer-Policy: no-referrer`, para que WhatsApp e Instagram não saibam qual casa foi consultada.
+- Cabeçalhos de segurança: CSP sem nenhum recurso de terceiros além dos blocos do mapa (fontes e ícones são servidos pelo próprio site), HSTS e `Referrer-Policy: no-referrer`, para que WhatsApp e Instagram não saibam qual casa foi consultada.
+
+## Riscos conhecidos e aceitos
+
+- `npm audit` aponta o pacote `braces` (alta) dentro do observador de arquivos do Tailwind 4. Não existe versão corrigida; ele só roda no build, processando os padrões de arquivo do próprio projeto, e não vai para o site publicado.
+- A senha de desbloqueio é única para toda a rede. Prefira uma frase-senha (letras são aceitas) e troque-a periodicamente com `npm run hash-senha`; trocar a senha encerra todas as sessões abertas.

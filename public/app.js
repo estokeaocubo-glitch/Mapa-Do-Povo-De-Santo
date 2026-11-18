@@ -267,6 +267,17 @@ function iniciarModais() {
     if (fechar) fecharModal(fechar.closest('.modal'));
   });
   document.addEventListener('keydown', (e) => {
+    // Prende o foco dentro da janela aberta: Tab no último item volta ao primeiro.
+    const aberta = document.querySelector('.modal.aberto');
+    if (e.key === 'Tab' && aberta) {
+      const focaveis = [...aberta.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]):not([tabindex="-1"]), select, textarea, [tabindex]:not([tabindex="-1"])')]
+        .filter((el) => el.offsetParent !== null);
+      if (!focaveis.length) return;
+      const [primeiro, ultimo] = [focaveis[0], focaveis[focaveis.length - 1]];
+      if (e.shiftKey && (document.activeElement === primeiro || !aberta.contains(document.activeElement))) { e.preventDefault(); ultimo.focus(); }
+      else if (!e.shiftKey && (document.activeElement === ultimo || !aberta.contains(document.activeElement))) { e.preventDefault(); primeiro.focus(); }
+      return;
+    }
     if (e.key !== 'Escape') return;
     const modal = document.querySelector('.modal.aberto');
     if (modal) fecharModal(modal);

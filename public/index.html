@@ -37,26 +37,26 @@
 
   <!-- ===================== HEADER ===================== -->
   <header class="fixed inset-x-0 top-0 z-[600] p-3 md:p-4">
-    <div class="glass flex items-center gap-3 rounded-2xl px-3 py-2.5 md:px-5">
+    <div class="glass flex items-center gap-2 rounded-2xl px-2.5 py-2.5 min-[360px]:gap-3 min-[360px]:px-3 md:px-5">
       <a href="/" class="flex min-w-0 items-center gap-3">
-        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-linear-to-br from-terracota to-ouro text-breu" aria-hidden="true">
+        <span class="hidden h-10 w-10 shrink-0 place-items-center rounded-xl min-[360px]:grid bg-linear-to-br from-terracota to-ouro text-breu" aria-hidden="true">
           <i data-lucide="sun-medium" class="h-5 w-5"></i>
         </span>
         <span class="min-w-0">
-          <h1 class="block truncate font-display text-[15px] font-bold leading-tight tracking-wide sm:text-base md:text-lg">
+          <h1 class="block truncate font-display text-[13px] font-bold leading-tight tracking-wide min-[360px]:text-[15px] sm:text-base md:text-lg">
             <span class="hidden min-[430px]:inline">Mapa do </span>Povo de Santo
           </h1>
           <span class="block truncate text-[11px] uppercase tracking-[0.2em] text-stone-400">Petrópolis<span class="hidden min-[430px]:inline"> · RJ · Memória e Axé</span></span>
         </span>
       </a>
-      <nav class="ml-auto flex items-center gap-2" aria-label="Ações principais">
-        <button type="button" class="btn-ghost px-3" data-abrir="modal-censo" title="Censo comunitário" aria-label="Censo comunitário">
+      <nav class="ml-auto flex shrink-0 items-center gap-1.5 min-[360px]:gap-2" aria-label="Ações principais">
+        <button type="button" class="btn-ghost px-2.5 min-[360px]:px-3" data-abrir="modal-censo" title="Censo comunitário" aria-label="Censo comunitário">
           <i data-lucide="chart-no-axes-column" class="h-4 w-4"></i><span class="hidden lg:inline">Censo</span>
         </button>
-        <button type="button" class="btn-ghost px-3 text-ouro" data-abrir="modal-apoio" title="Apoio jurídico e denúncia" aria-label="Apoio jurídico e denúncia">
+        <button type="button" class="btn-ghost px-2.5 min-[360px]:px-3 text-ouro" data-abrir="modal-apoio" title="Apoio Jurídico / Denúncia" aria-label="Apoio Jurídico / Denúncia">
           <i data-lucide="shield-alert" class="h-4 w-4"></i><span class="hidden lg:inline">Apoio Jurídico / Denúncia</span>
         </button>
-        <button type="button" class="btn-primary px-3 md:px-4" data-abrir="modal-cadastro" aria-label="Cadastrar casa">
+        <button type="button" class="btn-primary px-2.5 min-[360px]:px-3 md:px-4" data-abrir="modal-cadastro" aria-label="Cadastrar casa">
           <i data-lucide="plus" class="h-4 w-4"></i><span class="hidden sm:inline">Cadastrar Casa</span>
         </button>
       </nav>
