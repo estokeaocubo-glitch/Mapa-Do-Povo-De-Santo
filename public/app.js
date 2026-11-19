@@ -1,24 +1,31 @@
 // Mapa do Povo de Santo — ponto de entrada do front-end.
 import { api } from './js/api.js';
-import { DISTRITOS, SEGMENTOS, VERTENTES, segmentoDe } from './js/constants.js';
+import { DISTRITOS, GLOSSARIO, SEGMENTOS, VERTENTES, segmentoDe } from './js/constants.js';
 import { abrirDetalhe, detalheAberto, fecharDetalhe } from './js/detalhe.js';
-import { criarMapa, enquadrar, focarCasa, invalidar, marcarAtivo, renderizarCasas } from './js/map.js';
+import { girasDoDia } from './js/giras.js';
+import {
+  centroDoMapa, criarMapa, enquadrar, estaVisivel, focarCasa, invalidar, marcarAtivo, mostrarUsuario, renderizarCasas,
+} from './js/map.js';
 import { iniciarCadastro } from './js/cadastro.js';
+import { iniciarMinhaCasa } from './js/minha-casa.js';
 import { renderizarCenso } from './js/censo.js';
-import { debounce, ehMobile, esc, icones, normalizar } from './js/utils.js';
+import { debounce, ehMobile, esc, icones, normalizar, toast } from './js/utils.js';
 
 const estado = {
   casas: [],
   estatisticas: null,
   selecionadaId: null,
-  filtros: { busca: '', segmentos: new Set(), vertente: '', distrito: '', acao: '' },
+  usuario: null,               // posição do aparelho (só na memória, nunca enviada)
+  ordenacao: 'centro',
+  filtros: { busca: '', segmentos: new Set(), vertente: '', distrito: '', acao: '', hoje: false, area: false },
 };
 
 const $ = (id) => document.getElementById(id);
 
-// ============================== Filtros ==============================
+// ============================== Filtros e ordenação ==============================
+// Filtros que valem para o mapa e para a lista.
 function aplicarFiltros() {
-  const { busca, segmentos, vertente, distrito, acao } = estado.filtros;
+  const { busca, segmentos, vertente, distrito, acao, hoje } = estado.filtros;
   const termo = normalizar(busca.trim());
 
   return estado.casas.filter((c) => {
@@ -30,6 +37,7 @@ function aplicarFiltros() {
     }
     if (distrito && c.distrito !== distrito) return false;
     if (acao && !c.acoes_sociais.includes(acao)) return false;
+    if (hoje && (c.categoria === 'Economia do Axé' || !girasDoDia(c).length)) return false;
     if (termo) {
       const alvo = normalizar([c.nome_casa, c.orixa_guia_regente, c.lideranca_nome_religioso, c.lideranca_titulo,
         c.nacao_linha, c.vertente, c.bairro].join(' '));
@@ -37,6 +45,28 @@ function aplicarFiltros() {
     }
     return true;
   });
+}
+
+const distanciaKm = (a, b) => {
+  const r = Math.PI / 180;
+  const x = (b.lng - a.lng) * r * Math.cos(((a.lat + b.lat) / 2) * r);
+  return Math.hypot(x, (b.lat - a.lat) * r) * 6371;
+};
+
+// A lista acompanha o mapa: pode mostrar só o que está visível e é ordenada
+// pela proximidade do centro do mapa (ou da pessoa, em "Perto de mim").
+function casasDaLista(casas) {
+  let lista = estado.filtros.area ? casas.filter(estaVisivel) : [...casas];
+  const ponto = (c) => ({ lat: c.localizacao.lat, lng: c.localizacao.lng });
+  const ordens = {
+    nome: (a, b) => a.nome_casa.localeCompare(b.nome_casa, 'pt-BR'),
+    antigas: (a, b) => (a.ano_fundacao ?? 9999) - (b.ano_fundacao ?? 9999),
+    centro: (() => { const c = centroDoMapa(); return (a, b) => distanciaKm(c, ponto(a)) - distanciaKm(c, ponto(b)); })(),
+    distancia: (a, b) => distanciaKm(estado.usuario, ponto(a)) - distanciaKm(estado.usuario, ponto(b)),
+  };
+  const ordem = estado.ordenacao === 'distancia' && !estado.usuario ? 'centro' : estado.ordenacao;
+  lista = lista.sort(ordens[ordem]);
+  return lista;
 }
 
 function montarFiltros() {
@@ -80,73 +110,150 @@ function montarFiltros() {
     });
   }
 
+  $('ordenacao').addEventListener('change', (e) => { estado.ordenacao = e.target.value; atualizarLista(); });
+
+  $('filtro-hoje').addEventListener('click', (e) => {
+    estado.filtros.hoje = !estado.filtros.hoje;
+    e.currentTarget.setAttribute('aria-pressed', String(estado.filtros.hoje));
+    atualizar({ enquadrar: true });
+  });
+  $('filtro-area').addEventListener('click', (e) => {
+    estado.filtros.area = !estado.filtros.area;
+    e.currentTarget.setAttribute('aria-pressed', String(estado.filtros.area));
+    atualizarLista();
+  });
+  $('perto-de-mim').addEventListener('click', localizarUsuario);
+
   $('limpar-filtros').addEventListener('click', () => {
-    Object.assign(estado.filtros, { busca: '', vertente: '', distrito: '', acao: '' });
+    Object.assign(estado.filtros, { busca: '', vertente: '', distrito: '', acao: '', hoje: false, area: false });
     estado.filtros.segmentos.clear();
     $('filtro-busca').value = '';
     ['filtro-vertente', 'filtro-distrito', 'filtro-acao'].forEach((id) => { $(id).value = ''; });
-    document.querySelectorAll('[data-segmento]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+    document.querySelectorAll('[data-segmento], #filtro-hoje, #filtro-area').forEach((b) => b.setAttribute('aria-pressed', 'false'));
     atualizar({ enquadrar: true });
   });
 }
 
-// ============================== Lista ==============================
+function localizarUsuario() {
+  if (!navigator.geolocation) return toast('Este navegador não permite obter a localização.', 'erro');
+  const botao = $('perto-de-mim');
+  botao.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      botao.disabled = false;
+      botao.setAttribute('aria-pressed', 'true');
+      estado.usuario = { lat: coords.latitude, lng: coords.longitude };
+      const opcao = $('ordenacao').querySelector('[value=distancia]');
+      opcao.hidden = false;
+      $('ordenacao').value = estado.ordenacao = 'distancia';
+      mostrarUsuario(coords.latitude, coords.longitude);
+      atualizarLista();
+      toast('Lista ordenada pela sua localização. Ela fica só neste aparelho.', 'ok');
+    },
+    () => {
+      botao.disabled = false;
+      toast('Não foi possível obter sua localização.', 'erro');
+    },
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+  );
+}
+
+// ============================== Lista e carrossel ==============================
+function seloHoje(c) {
+  const hoje = girasDoDia(c);
+  if (!hoje.length) return '';
+  const certa = hoje.find((g) => g.hoje === 'sim');
+  const rotulo = c.categoria === 'Economia do Axé' ? 'Aberto hoje' : 'Gira hoje';
+  return certa
+    ? `<span class="selo-hoje"><i data-lucide="calendar-check" class="h-3 w-3"></i>${rotulo}${certa.horario ? ` · ${esc(certa.horario)}` : ''}</span>`
+    : '<span class="selo-hoje">Pode ter gira hoje</span>';
+}
+
+function htmlCard(c, { compacto = false } = {}) {
+  const seg = SEGMENTOS[segmentoDe(c)];
+  const aproximado = c.nivel_privacidade === 'Aproximado';
+  const distancia = estado.usuario ? distanciaKm(estado.usuario, c.localizacao) : null;
+  return `
+    <button type="button" class="card-casa${compacto ? ' glass !bg-stone-900/95' : ''}" data-id="${esc(c.id)}" aria-current="${c.id === estado.selecionadaId}">
+      <div class="flex items-start gap-3">
+        <span class="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-breu" style="background:${seg.cor}" aria-hidden="true">${esc(seg.letra)}</span>
+        <span class="min-w-0 flex-1">
+          <span class="block truncate font-semibold">${esc(c.nome_casa)}</span>
+          <span class="block truncate text-xs text-stone-400">${esc([c.nacao_linha || c.vertente, c.orixa_guia_regente].filter(Boolean).join(' · '))}</span>
+          <span class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-400">
+            ${seloHoje(c)}
+            <span class="inline-flex items-center gap-1"><i data-lucide="${aproximado ? 'circle-dashed' : 'map-pin'}" class="h-3 w-3"></i>${esc(c.bairro)}${aproximado ? ' (aprox.)' : ''}</span>
+            ${distancia !== null ? `<span>${distancia < 1 ? `${Math.round(distancia * 1000)} m` : `${distancia.toFixed(1).replace('.', ',')} km`}</span>` : ''}
+            ${!compacto && c.ano_fundacao ? `<span class="inline-flex items-center gap-1"><i data-lucide="landmark" class="h-3 w-3"></i>desde ${esc(c.ano_fundacao)}</span>` : ''}
+            ${!compacto && c.acoes_sociais.length ? `<span class="inline-flex items-center gap-1"><i data-lucide="hand-heart" class="h-3 w-3"></i>${c.acoes_sociais.length} ações sociais</span>` : ''}
+          </span>
+        </span>
+      </div>
+    </button>`;
+}
+
 function renderizarLista(casas) {
   const lista = $('lista-casas');
   if (!casas.length) {
     lista.innerHTML = `
       <li class="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-stone-400">
         <i data-lucide="search-x" class="mx-auto mb-2 h-6 w-6"></i>
-        Nenhuma casa encontrada com esses filtros.
+        ${estado.filtros.area ? 'Nenhuma casa nesta área do mapa. Afaste o zoom ou desligue "Só nesta área".' : 'Nenhuma casa encontrada com esses filtros.'}
       </li>`;
-    icones();
-    return;
+  } else {
+    lista.innerHTML = casas.map((c) => `<li>${htmlCard(c)}</li>`).join('');
   }
-  lista.innerHTML = casas.map((c) => {
-    const seg = SEGMENTOS[segmentoDe(c)];
-    const aproximado = c.nivel_privacidade === 'Aproximado';
-    return `
-      <li>
-        <button type="button" class="card-casa" data-id="${esc(c.id)}" aria-current="${c.id === estado.selecionadaId}">
-          <div class="flex items-start gap-3">
-            <span class="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-breu" style="background:${seg.cor}">${esc(seg.letra)}</span>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate font-semibold">${esc(c.nome_casa)}</span>
-              <span class="block truncate text-xs text-stone-400">${esc([c.nacao_linha || c.vertente, c.orixa_guia_regente].filter(Boolean).join(' · '))}</span>
-              <span class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-400">
-                <span class="inline-flex items-center gap-1"><i data-lucide="${aproximado ? 'circle-dashed' : 'map-pin'}" class="h-3 w-3"></i>${esc(c.bairro)}${aproximado ? ' (aprox.)' : ''}</span>
-                ${c.ano_fundacao ? `<span class="inline-flex items-center gap-1"><i data-lucide="landmark" class="h-3 w-3"></i>desde ${esc(c.ano_fundacao)}</span>` : ''}
-                ${c.acoes_sociais.length ? `<span class="inline-flex items-center gap-1"><i data-lucide="hand-heart" class="h-3 w-3"></i>${c.acoes_sociais.length} ações sociais</span>` : ''}
-              </span>
-            </span>
-          </div>
-        </button>
-      </li>`;
-  }).join('');
+  // Carrossel do celular: mesmas casas, cards compactos.
+  $('carrossel').innerHTML = casas.slice(0, 30).map((c) => `<div role="listitem">${htmlCard(c, { compacto: true })}</div>`).join('');
   icones();
 }
 
-function atualizarContagem(casas) {
+function atualizarContagem(casasMapa, casasLista) {
   const total = estado.casas.length;
   const ocultas = estado.estatisticas?.casas_ocultas || 0;
-  $('contagem').textContent = casas.length === total
+  let texto = casasMapa.length === total
     ? `${total} ${total === 1 ? 'casa' : 'casas'} no mapa${ocultas ? ` · +${ocultas} só no censo` : ''}`
-    : `${casas.length} de ${total} casas`;
+    : `${casasMapa.length} de ${total} casas`;
+  if (estado.filtros.area) texto += ` · ${casasLista.length} nesta área`;
+  $('contagem').textContent = texto;
 
   const f = estado.filtros;
   const ativos = [f.vertente, f.distrito, f.acao].filter(Boolean).length;
   $('filtros-ativos').textContent = ativos;
   $('filtros-ativos').classList.toggle('hidden', !ativos);
-  $('limpar-filtros').classList.toggle('hidden', !(ativos || f.busca || f.segmentos.size));
+  $('limpar-filtros').classList.toggle('hidden', !(ativos || f.busca || f.segmentos.size || f.hoje || f.area));
+}
+
+let casasFiltradas = [];
+function atualizarLista() {
+  const lista = casasDaLista(casasFiltradas);
+  renderizarLista(lista);
+  atualizarContagem(casasFiltradas, lista);
 }
 
 function atualizar({ enquadrar: deveEnquadrar = false } = {}) {
-  const casas = aplicarFiltros();
-  renderizarCasas(casas);
-  renderizarLista(casas);
-  atualizarContagem(casas);
+  casasFiltradas = aplicarFiltros();
+  renderizarCasas(casasFiltradas);
   if (estado.selecionadaId) marcarAtivo(estado.selecionadaId);
-  if (deveEnquadrar && casas.length) enquadrar(casas);
+  if (deveEnquadrar && casasFiltradas.length) enquadrar(casasFiltradas);
+  atualizarLista();
+}
+
+// Ao deslizar o carrossel, o mapa vai até a casa do card central.
+function iniciarCarrossel() {
+  const carrossel = $('carrossel');
+  carrossel.addEventListener('click', (e) => {
+    const card = e.target.closest('.card-casa');
+    if (card) selecionar(card.dataset.id);
+  });
+  carrossel.addEventListener('scroll', debounce(() => {
+    const meio = carrossel.getBoundingClientRect().left + carrossel.clientWidth / 2;
+    const central = [...carrossel.querySelectorAll('.card-casa')]
+      .sort((a, b) => Math.abs(a.getBoundingClientRect().left + a.offsetWidth / 2 - meio) - Math.abs(b.getBoundingClientRect().left + b.offsetWidth / 2 - meio))[0];
+    if (!central) return;
+    estado.movidoPeloCarrossel = true;   // não reordena a lista enquanto a pessoa desliza
+    focarCasa(central.dataset.id, { deslocarPara: 'cima', zoom: 14 });
+  }, 200));
 }
 
 // ============================== Seleção / detalhe ==============================
@@ -157,11 +264,14 @@ function selecionar(id, { voar = true } = {}) {
   if (!document.getElementById('drawer').contains(document.activeElement)) estado.origemFoco = document.activeElement;
   estado.selecionadaId = id;
   document.querySelectorAll('.card-casa').forEach((b) => b.setAttribute('aria-current', String(b.dataset.id === id)));
-  abrirDetalhe(casa, { aoFechar: desselecionar });
+  abrirDetalhe(casa, { aoFechar: desselecionar, aoAbrirTermo: abrirGlossario });
   if (ehMobile()) definirEstadoPainel('recolhido');
+  estado.movidoPeloCarrossel = true;
   if (voar) focarCasa(id, { deslocarPara: ehMobile() ? 'cima' : 'esquerda' });
   else marcarAtivo(id);
-  history.replaceState(null, '', `#${casa.slug}`);
+  // Endereço próprio da casa (compartilhável, com prévia nas redes).
+  history.replaceState(null, '', `/casa/${casa.slug}`);
+  document.title = `${casa.nome_casa} · Mapa do Povo de Santo`;
 }
 
 function desselecionar() {
@@ -169,7 +279,8 @@ function desselecionar() {
   fecharDetalhe();
   marcarAtivo(null);
   document.querySelectorAll('.card-casa').forEach((b) => b.setAttribute('aria-current', 'false'));
-  history.replaceState(null, '', location.pathname);
+  history.replaceState(null, '', '/');
+  document.title = 'Mapa do Povo de Santo · Petrópolis';
   // Devolve o foco ao card (ou elemento) que abriu a ficha; se ele sumiu
   // (filtro mudou), vai para a lista.
   const origem = estado.origemFoco;
@@ -190,14 +301,14 @@ function iniciarBottomSheet() {
   const alca = $('painel-alca');
   let inicioY = 0;
   let inicioTranslate = 0;
-  let ultimoY = 0;
   let arrastou = false;
 
   const translateAtual = () => new DOMMatrixReadOnly(getComputedStyle(painel).transform).m42;
+  const peek = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peek'));
 
   alca.addEventListener('pointerdown', (e) => {
     if (!ehMobile()) return;
-    inicioY = ultimoY = e.clientY;
+    inicioY = e.clientY;
     inicioTranslate = translateAtual();
     arrastou = false;
     painel.classList.add('arrastando');
@@ -208,9 +319,7 @@ function iniciarBottomSheet() {
     if (!painel.classList.contains('arrastando')) return;
     const delta = e.clientY - inicioY;
     if (Math.abs(delta) > 4) arrastou = true;
-    ultimoY = e.clientY;
-    const max = painel.offsetHeight - parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peek'));
-    painel.style.transform = `translateY(${Math.min(Math.max(inicioTranslate + delta, 0), max)}px)`;
+    painel.style.transform = `translateY(${Math.min(Math.max(inicioTranslate + delta, 0), painel.offsetHeight - peek())}px)`;
   });
 
   const soltar = () => {
@@ -224,7 +333,7 @@ function iniciarBottomSheet() {
       return definirEstadoPainel(ESTADOS_PAINEL[(i + 1) % ESTADOS_PAINEL.length]);
     }
     const h = painel.offsetHeight;
-    const alvos = { cheio: 0, meio: h * 0.45, recolhido: h - 172 };
+    const alvos = { cheio: 0, meio: h * 0.45, recolhido: h - peek() };
     const maisProximo = Object.entries(alvos).sort((a, b) => Math.abs(a[1] - y) - Math.abs(b[1] - y))[0][0];
     definirEstadoPainel(maisProximo);
   };
@@ -245,18 +354,20 @@ let ultimoFoco = null;
 const FUNDO = () => [document.querySelector('header'), document.querySelector('main'), document.querySelector('a[href="#lista-casas"]')];
 
 export function abrirModal(id) {
-  ultimoFoco = document.activeElement;
+  if (!document.querySelector('.modal.aberto')) ultimoFoco = document.activeElement;
   const modal = $(id);
   FUNDO().forEach((el) => el && (el.inert = true));
   modal.classList.add('aberto');
-  modal.querySelector('input, select, textarea, button')?.focus({ preventScroll: true });
+  modal.querySelector('input:not([type=hidden]), select, textarea, button')?.focus({ preventScroll: true });
   modal.dispatchEvent(new CustomEvent('modal:aberto'));
 }
 
 function fecharModal(modal) {
   modal.classList.remove('aberto');
-  if (!document.querySelector('.modal.aberto')) FUNDO().forEach((el) => el && (el.inert = false));
-  ultimoFoco?.focus?.({ preventScroll: true });
+  if (!document.querySelector('.modal.aberto')) {
+    FUNDO().forEach((el) => el && (el.inert = false));
+    ultimoFoco?.focus?.({ preventScroll: true });
+  }
 }
 
 function iniciarModais() {
@@ -264,7 +375,10 @@ function iniciarModais() {
     const abrir = e.target.closest('[data-abrir]');
     if (abrir) return abrirModal(abrir.dataset.abrir);
     const fechar = e.target.closest('[data-fechar]');
-    if (fechar) fecharModal(fechar.closest('.modal'));
+    if (fechar) {
+      fecharModal(fechar.closest('.modal'));
+      if (fechar.dataset.depoisAbrir) abrirModal(fechar.dataset.depoisAbrir);
+    }
   });
   document.addEventListener('keydown', (e) => {
     // Prende o foco dentro da janela aberta: Tab no último item volta ao primeiro.
@@ -291,11 +405,56 @@ function iniciarModais() {
         estado.estatisticas = await api.estatisticas();
         estado.estatisticasEm = Date.now();
       }
-      renderizarCenso($('censo-conteudo'), estado.estatisticas);
+      renderizarCenso($('censo-conteudo'), estado.estatisticas, { aoAbrirCasa: (slug) => {
+        fecharModal($('modal-censo'));
+        const casa = estado.casas.find((c) => c.slug === slug);
+        if (casa) selecionar(casa.id);
+      } });
     } catch {
       $('censo-conteudo').innerHTML = '<p class="text-sm text-red-300">Não foi possível carregar o censo agora.</p>';
     }
   });
+}
+
+// ============================== Glossário ==============================
+function renderizarGlossario(filtro = '') {
+  const termo = normalizar(filtro);
+  const itens = Object.entries(GLOSSARIO)
+    .filter(([t, d]) => !termo || normalizar(`${t} ${d}`).includes(termo))
+    .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
+  $('glossario-lista').innerHTML = itens.map(([t, d]) => `
+    <div id="termo-${esc(normalizar(t).replace(/\W+/g, '-'))}" class="rounded-xl bg-white/[0.03] p-3">
+      <dt class="font-semibold text-ouro">${esc(t)}</dt><dd class="mt-1 text-sm leading-relaxed text-stone-300">${esc(d)}</dd>
+    </div>`).join('') || '<p class="text-sm text-stone-400">Nenhum termo encontrado.</p>';
+}
+
+function abrirGlossario(termo) {
+  abrirModal('modal-glossario');
+  $('glossario-busca').value = '';
+  renderizarGlossario();
+  if (termo) {
+    const alvo = document.getElementById(`termo-${normalizar(termo).replace(/\W+/g, '-')}`);
+    alvo?.scrollIntoView({ block: 'center' });
+    alvo?.classList.add('ring-2', 'ring-ouro/60');
+  }
+}
+
+function iniciarGlossario() {
+  renderizarGlossario();
+  $('glossario-busca').addEventListener('input', (e) => renderizarGlossario(e.target.value));
+}
+
+// ============================== Boas-vindas ==============================
+const CHAVE_BOAS_VINDAS = 'mps_boas_vindas';
+function iniciarBoasVindas() {
+  $('rever-boas-vindas').addEventListener('click', () => abrirModal('modal-boas-vindas'));
+  let visto = true;
+  try { visto = localStorage.getItem(CHAVE_BOAS_VINDAS) === '1'; } catch { /* sem storage: não insiste */ }
+  // Quem chega por um link de casa vai direto à casa.
+  if (!visto && !location.pathname.startsWith('/casa/')) {
+    abrirModal('modal-boas-vindas');
+    try { localStorage.setItem(CHAVE_BOAS_VINDAS, '1'); } catch { /* sem storage */ }
+  }
 }
 
 // ============================== Carregamento ==============================
@@ -323,13 +482,31 @@ async function carregarCasas() {
   }
 }
 
+// Casa indicada no endereço: /casa/<slug> (ou o formato antigo /#slug).
+function slugDoEndereco() {
+  if (location.pathname.startsWith('/casa/')) return decodeURIComponent(location.pathname.slice(6)).replace(/\/$/, '');
+  return decodeURIComponent(location.hash.slice(1));
+}
+
 // ============================== Inicialização ==============================
 async function iniciar() {
   icones();
-  criarMapa('mapa', { aoSelecionar: (id) => selecionar(id) });
+  criarMapa('mapa', {
+    aoSelecionar: (id) => selecionar(id),
+    aoMover: debounce(() => {
+      // Reordena/filtra a lista pelo que está visível — exceto quando o próprio
+      // carrossel moveu o mapa (senão os cards mudariam de lugar sob o dedo).
+      if (estado.movidoPeloCarrossel) { estado.movidoPeloCarrossel = false; return; }
+      if (estado.casas.length && (estado.filtros.area || estado.ordenacao === 'centro')) atualizarLista();
+    }, 250),
+  });
   iniciarModais();
   iniciarBottomSheet();
+  iniciarCarrossel();
+  iniciarGlossario();
   iniciarCadastro();
+  iniciarMinhaCasa({ abrir: abrirModal, fechar: fecharModal });
+  iniciarBoasVindas();
 
   $('lista-casas').addEventListener('click', (e) => {
     const card = e.target.closest('.card-casa');
@@ -341,14 +518,13 @@ async function iniciar() {
   atualizar();
   enquadrar(estado.casas);
 
-  // Link direto para uma casa: /#slug-da-casa
-  const irParaHash = () => {
-    const slug = decodeURIComponent(location.hash.slice(1));
+  const irParaEndereco = () => {
+    const slug = slugDoEndereco();
     const casa = slug && estado.casas.find((c) => c.slug === slug);
     if (casa && casa.id !== estado.selecionadaId) selecionar(casa.id);
   };
-  window.addEventListener('hashchange', irParaHash);
-  setTimeout(irParaHash, 400);
+  window.addEventListener('hashchange', irParaEndereco);
+  setTimeout(irParaEndereco, 400);
 
   window.addEventListener('resize', debounce(invalidar, 150));
 }

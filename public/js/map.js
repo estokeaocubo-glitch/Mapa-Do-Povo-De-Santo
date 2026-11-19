@@ -2,21 +2,23 @@
 //
 // SEGURANÇA GEOGRÁFICA NO FRONT-END:
 //  • 'Exato'      → pino (L.marker) na coordenada pública (= real).
-//  • 'Aproximado' → círculo de 500 m (L.circle) centrado na coordenada JÁ
-//    OFUSCADA pelo servidor. O navegador nunca recebe a coordenada real,
-//    então não há o que "descobrir" inspecionando a página.
-//  • Mesmo no zoom máximo, a área aproximada continua sendo só um círculo.
+//  • 'Aproximado' → coordenada JÁ OFUSCADA pelo servidor. Com o mapa afastado
+//    (zoom < 13) vira um pino "vazado", agrupado com os outros; de perto, um
+//    círculo de 500 m. O navegador nunca recebe a coordenada real.
 import { CENTRO_PETROPOLIS, SEGMENTOS, segmentoDe } from './constants.js';
 import { esc } from './utils.js';
+
+const ZOOM_AREA = 13;   // a partir daqui, área aproximada aparece como círculo
 
 let mapa;
 let cluster;
 let camadaAreas;
-const camadas = new Map(); // id → { camada, tipo }
+let marcadorUsuario = null;
+const camadas = new Map(); // id → { tipo, casa, pino, circulo }
 let ativoId = null;
 const menosMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function criarMapa(elementoId, { aoSelecionar }) {
+export function criarMapa(elementoId, { aoSelecionar, aoMover }) {
   mapa = L.map(elementoId, {
     center: CENTRO_PETROPOLIS,
     zoom: 11,
@@ -43,22 +45,51 @@ export function criarMapa(elementoId, { aoSelecionar }) {
     },
   });
   camadaAreas = L.layerGroup();
-  mapa.addLayer(camadaAreas);
   mapa.addLayer(cluster);
 
   mapa._aoSelecionar = aoSelecionar;
+  mapa.on('zoomend', alternarAproximadas);
+  if (aoMover) mapa.on('moveend', () => aoMover());
   return mapa;
 }
 
-function iconePino(casa, ativo = false) {
+function iconePino(casa, { ativo = false, aproximado = false } = {}) {
   const seg = SEGMENTOS[segmentoDe(casa)];
   return L.divIcon({
     className: '',
-    html: `<div class="pino${ativo ? ' ativo' : ''}" style="--cor:${seg.cor};${seg.anel ? `--anel:${seg.anel}` : ''}">
+    html: `<div class="pino${ativo ? ' ativo' : ''}${aproximado ? ' aproximado' : ''}" style="--cor:${seg.cor};${seg.anel ? `--anel:${seg.anel}` : ''}">
              <span class="pino-gota"></span><span class="pino-letra" aria-hidden="true">${esc(seg.letra)}</span></div>`,
     iconSize: [34, 44],
     iconAnchor: [17, 35],
     tooltipAnchor: [0, -30],
+  });
+}
+
+// Afastado: pinos vazados dentro do agrupamento. Perto: círculos de 500 m.
+function alternarAproximadas() {
+  const perto = mapa.getZoom() >= ZOOM_AREA;
+  const pinos = [...camadas.values()].filter((i) => i.tipo === 'area').map((i) => i.pino);
+  if (perto) {
+    cluster.removeLayers(pinos.filter((p) => cluster.hasLayer(p)));
+    if (!mapa.hasLayer(camadaAreas)) mapa.addLayer(camadaAreas);
+  } else {
+    if (mapa.hasLayer(camadaAreas)) mapa.removeLayer(camadaAreas);
+    cluster.addLayers(pinos.filter((p) => !cluster.hasLayer(p)));
+  }
+}
+
+function tornarAcessivel(circulo, casa) {
+  const el = circulo.getElement();
+  if (!el || el.dataset.acessivel) return;
+  el.dataset.acessivel = '1';
+  el.setAttribute('role', 'button');
+  el.setAttribute('tabindex', '0');
+  el.setAttribute('aria-label', `${casa.nome_casa} — área aproximada em ${casa.bairro}`);
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      mapa._aoSelecionar(casa.id);
+    }
   });
 }
 
@@ -70,44 +101,27 @@ export function renderizarCasas(casas) {
   for (const casa of casas) {
     const { lat, lng, tipo, raio_m } = casa.localizacao;
     const seg = SEGMENTOS[segmentoDe(casa)];
-    let camada;
+    const item = { tipo, casa };
+    const dica = `${esc(casa.nome_casa)}${tipo === 'area' ? ` · <span style="font-weight:400;opacity:.75">${esc(casa.bairro)} (área aproximada)</span>` : ''}`;
+
+    item.pino = L.marker([lat, lng], {
+      icon: iconePino(casa, { aproximado: tipo === 'area' }), title: casa.nome_casa, riseOnHover: true, keyboard: true,
+    }).bindTooltip(dica, { className: 'tooltip-casa', direction: 'top' }).on('click', () => mapa._aoSelecionar(casa.id));
 
     if (tipo === 'area') {
       // Área aproximada: círculo translúcido em vez de pino cravado.
-      camada = L.circle([lat, lng], {
-        radius: raio_m,
-        color: seg.cor,
-        weight: 2,
-        dashArray: '6 6',
-        fillColor: seg.cor,
-        fillOpacity: 0.18,
-      });
-      camadaAreas.addLayer(camada);
-      // Acessibilidade: a área vira um "botão" com nome, acionável por teclado.
-      const el = camada.getElement();
-      if (el) {
-        el.setAttribute('role', 'button');
-        el.setAttribute('tabindex', '0');
-        el.setAttribute('aria-label', `${casa.nome_casa} — área aproximada em ${casa.bairro}`);
-        el.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            mapa._aoSelecionar(casa.id);
-          }
-        });
-      }
+      item.circulo = L.circle([lat, lng], {
+        radius: raio_m, color: seg.cor, weight: 2, dashArray: '6 6', fillColor: seg.cor, fillOpacity: 0.18,
+      }).bindTooltip(dica, { className: 'tooltip-casa', direction: 'top', sticky: true })
+        .on('click', () => mapa._aoSelecionar(casa.id))
+        .on('add', () => tornarAcessivel(item.circulo, casa));
+      camadaAreas.addLayer(item.circulo);
     } else {
-      camada = L.marker([lat, lng], { icon: iconePino(casa), title: casa.nome_casa, riseOnHover: true, keyboard: true });
-      cluster.addLayer(camada);
+      cluster.addLayer(item.pino);
     }
-
-    camada.bindTooltip(
-      `${esc(casa.nome_casa)}${tipo === 'area' ? ` · <span style="font-weight:400;opacity:.75">${esc(casa.bairro)} (área aproximada)</span>` : ''}`,
-      { className: 'tooltip-casa', direction: 'top', sticky: tipo === 'area' },
-    );
-    camada.on('click', () => mapa._aoSelecionar(casa.id));
-    camadas.set(casa.id, { camada, tipo, casa });
+    camadas.set(casa.id, item);
   }
+  alternarAproximadas();
 }
 
 export function enquadrar(casas) {
@@ -116,12 +130,12 @@ export function enquadrar(casas) {
   mapa.fitBounds(limites.pad(0.15), { maxZoom: 14, animate: !menosMovimento() });
 }
 
-export function focarCasa(id, { deslocarPara = null } = {}) {
+export function focarCasa(id, { deslocarPara = null, zoom: zoomPedido } = {}) {
   const item = camadas.get(id);
   if (!item) return;
   marcarAtivo(id);
   const { lat, lng } = item.casa.localizacao;
-  const zoom = item.tipo === 'area' ? 15 : 16;
+  const zoom = zoomPedido ?? (item.tipo === 'area' ? 15 : 16);
 
   // Compensa o espaço ocupado pelo drawer/bottom sheet para o alvo ficar visível.
   const alvo = mapa.project([lat, lng], zoom);
@@ -139,11 +153,21 @@ export function marcarAtivo(id) {
 }
 
 function estilizar(item, ativo) {
-  if (item.tipo === 'area') {
-    item.camada.setStyle({ weight: ativo ? 3 : 2, fillOpacity: ativo ? 0.3 : 0.18, dashArray: ativo ? null : '6 6' });
-  } else {
-    item.camada.setIcon(iconePino(item.casa, ativo));
-  }
+  item.pino.setIcon(iconePino(item.casa, { ativo, aproximado: item.tipo === 'area' }));
+  item.circulo?.setStyle({ weight: ativo ? 3 : 2, fillOpacity: ativo ? 0.3 : 0.18, dashArray: ativo ? null : '6 6' });
+}
+
+// Centro e área visível do mapa (para ordenar a lista e filtrar "nesta área").
+export const centroDoMapa = () => mapa.getCenter();
+export const estaVisivel = (casa) => mapa.getBounds().pad(-0.02).contains([casa.localizacao.lat, casa.localizacao.lng]);
+
+// "Perto de mim": a posição fica só no navegador, nunca vai ao servidor.
+export function mostrarUsuario(lat, lng) {
+  marcadorUsuario?.remove();
+  marcadorUsuario = L.circleMarker([lat, lng], {
+    radius: 8, color: '#F5F5F0', weight: 3, fillColor: '#5B8DEF', fillOpacity: 1, interactive: false,
+  }).addTo(mapa);
+  mapa.setView([lat, lng], Math.max(mapa.getZoom(), 13), { animate: !menosMovimento() });
 }
 
 export function invalidar() {

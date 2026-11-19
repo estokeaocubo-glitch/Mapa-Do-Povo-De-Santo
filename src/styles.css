@@ -70,7 +70,7 @@ select.field {
   &[aria-pressed='true'] { @apply border-ouro/60 bg-ouro/15 text-algodao; }
 }
 @utility dot { @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full; }
-@utility section-title { @apply font-display text-sm tracking-[0.18em] text-ouro; }
+@utility section-title { @apply font-sans text-xs font-semibold uppercase tracking-[0.16em] text-ouro; }
 @utility card-casa {
   @apply w-full cursor-pointer rounded-2xl border border-white/5 bg-white/[0.03] p-3.5 text-left transition
          hover:border-ouro/30 hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-ouro/60;
@@ -78,11 +78,11 @@ select.field {
 }
 @utility bento { @apply rounded-3xl border border-white/10 bg-white/[0.04] p-5; }
 
-/* Ornamento: faixa inspirada em padronagens de tecidos africanos */
-.kente {
-  height: 4px;
-  background: repeating-linear-gradient(90deg, var(--terracota) 0 18px, var(--ouro) 18px 30px,
-    #3a9460 30px 38px, var(--breu) 38px 42px);
+/* Ornamento neutro (filete terracota → ouro). A identidade visual definitiva
+   (padrões de búzios, palha da costa, ojá...) deve ser definida COM as casas. */
+.ornamento {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--terracota) 15%, var(--ouro) 50%, var(--terracota) 85%, transparent);
 }
 
 /* Esqueleto de carregamento */
@@ -112,6 +112,12 @@ select.field {
   position: absolute; left: 3px; top: 1px; width: 28px; height: 28px;
   display: grid; place-items: center; font: 700 12px/1 'Plus Jakarta Sans', sans-serif; color: #12100e;
 }
+.pino.aproximado .pino-gota {
+  background: color-mix(in srgb, var(--cor) 28%, #12100e);
+  border: 2px dashed var(--cor);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, .5);
+}
+.pino.aproximado .pino-letra { color: var(--cor); }
 .pino.ativo .pino-gota { box-shadow: 0 0 0 3px var(--ouro), 0 0 24px 4px rgba(212, 175, 55, .45); }
 
 .marker-cluster-custom {
@@ -191,3 +197,25 @@ select.field {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* ===================== Carrossel do celular ===================== */
+#carrossel { display: none; }
+@media (max-width: 767px) {
+  #carrossel {
+    display: flex; position: fixed; z-index: 450; left: 0; right: 0; bottom: calc(var(--peek) + 8px);
+    gap: .75rem; padding: 0 1rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  }
+  #carrossel::-webkit-scrollbar { display: none; }
+  #carrossel > * { scroll-snap-align: center; flex: 0 0 82%; }
+  body:has(#painel:not([data-estado='recolhido'])) #carrossel,
+  body:has(#drawer.aberto) #carrossel,
+  #carrossel:empty { display: none; }
+  /* Com o carrossel, zoom e créditos sobem mais um pouco. */
+  body:has(#carrossel:not(:empty)) .leaflet-bottom { bottom: calc(var(--peek) + 136px); }
+}
+
+/* Termos do glossário */
+.termo { @apply cursor-help underline decoration-dotted decoration-ouro/70 underline-offset-4 hover:text-ouro; }
+
+/* Selo "gira hoje" */
+.selo-hoje { @apply inline-flex items-center gap-1 rounded-full bg-mata/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-300; }

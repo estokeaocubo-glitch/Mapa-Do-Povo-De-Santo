@@ -29,7 +29,7 @@ const tile = (classes, titulo, icone, corpo) => `
     ${corpo}
   </section>`;
 
-export function renderizarCenso(el, s) {
+export function renderizarCenso(el, s, { aoAbrirCasa } = {}) {
   const noMapa = s.total_casas - s.casas_ocultas;
   const corVertente = (i) => SEGMENTOS[segmentoDe({ vertente: i.rotulo })].cor;
 
@@ -57,7 +57,7 @@ export function renderizarCenso(el, s) {
       <p class="font-display text-lg font-bold text-ouro">${c.anonimizada ? `Década de ${esc(c.decada_fundacao)}` : esc(c.ano_fundacao)}</p>
       <p class="text-sm font-semibold">${c.anonimizada
         ? '<span class="inline-flex items-center gap-1.5 text-stone-300"><i data-lucide="eye-off" class="h-3.5 w-3.5"></i>Casa preservada (identidade protegida)</span>'
-        : `<a class="hover:text-ouro hover:underline" href="#${esc(c.slug)}" data-ir-para="${esc(c.slug)}">${esc(c.nome_casa)}</a>`}</p>
+        : `<a class="hover:text-ouro hover:underline" href="/casa/${esc(c.slug)}" data-ir-para="${esc(c.slug)}">${esc(c.nome_casa)}</a>`}</p>
       <p class="text-xs text-stone-400">${esc([c.vertente, c.nacao_linha, c.distrito?.replace(/ - .*/, '')].filter(Boolean).join(' · '))}${c.anos_de_historia ? ` · ${c.anos_de_historia} anos` : ''}</p>
     </li>`).join('')}</ol>` : '<p class="text-sm text-stone-400">Sem dados ainda.</p>';
 
@@ -69,7 +69,7 @@ export function renderizarCenso(el, s) {
         <p class="mt-2 font-display text-6xl font-bold text-algodao">${fmt.format(s.total_casas)}</p>
         <p class="mt-2 text-sm text-stone-300"><strong class="text-ouro">${fmt.format(noMapa)}</strong> visíveis no mapa ·
           <strong class="text-ouro">${fmt.format(s.casas_ocultas)}</strong> protegidas (só no censo)</p>
-        <div class="kente mt-5 rounded-full opacity-70"></div>
+        <div class="ornamento mt-5 rounded-full opacity-70"></div>
       </section>
 
       <section class="bento">
@@ -98,8 +98,11 @@ export function renderizarCenso(el, s) {
     </p>`;
   icones();
 
-  el.querySelectorAll('[data-ir-para]').forEach((a) => a.addEventListener('click', () => {
-    el.closest('.modal')?.classList.remove('aberto');
-    setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 0);
-  }));
+  // No site, abre a ficha sem recarregar; na página /censo.html, segue o link.
+  if (aoAbrirCasa) {
+    el.querySelectorAll('[data-ir-para]').forEach((a) => a.addEventListener('click', (e) => {
+      e.preventDefault();
+      aoAbrirCasa(a.dataset.irPara);
+    }));
+  }
 }

@@ -30,6 +30,11 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ slug, senha }),
   }),
+  minhaCasa: (codigo, acao, extra = {}) => requisicao('/api/minha-casa', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ codigo, acao, ...extra }),
+  }),
   cadastrar: (dados) => requisicao('/api/cadastro', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

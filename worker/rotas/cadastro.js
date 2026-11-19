@@ -51,15 +51,15 @@ export async function cadastro(request, env) {
        lideranca_titulo, lideranca_nome_religioso, ano_fundacao, distrito, bairro,
        endereco_completo, lat_real, lng_real, lat_publica, lng_publica, nivel_privacidade,
        historia_resumo, calendario_giras, acoes_sociais, whatsapp_contato, instagram_url,
-       status_moderacao, consentimento_lgpd_em, codigo_edicao_hash
+       status_moderacao, consentimento_lgpd_em, codigo_edicao_hash, contato_restrito
      ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,
-               'Pendente', strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?24)`,
+               'Pendente', strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?24, ?25)`,
   ).bind(
     id, dados.nome_casa, slug, dados.categoria, dados.vertente, dados.nacao_linha, dados.orixa_guia_regente,
     dados.lideranca_titulo, dados.lideranca_nome_religioso, dados.ano_fundacao, dados.distrito, dados.bairro,
     dados.endereco_completo, dados.lat_real, dados.lng_real, pub.lat, pub.lng, dados.nivel_privacidade,
     dados.historia_resumo, JSON.stringify(dados.calendario_giras), JSON.stringify(dados.acoes_sociais),
-    dados.whatsapp_contato, dados.instagram_url, await hashCodigo(codigoEdicao),
+    dados.whatsapp_contato, dados.instagram_url, await hashCodigo(codigoEdicao), body.contato_restrito === true ? 1 : 0,
   ).run();
   await registrarTentativa(env, 'cadastro', ip);
 

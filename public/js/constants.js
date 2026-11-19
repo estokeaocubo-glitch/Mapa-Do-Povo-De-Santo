@@ -52,3 +52,49 @@ export const TEXTO_PRIVACIDADE = {
     texto: 'A casa não aparece no mapa nem na lista. Ela só entra nos números agregados do censo (por distrito, nação, ano), sem nome e sem localização.',
   },
 };
+
+// Glossário introdutório. Definições curtas e gerais: cada casa e cada nação
+// tem seus próprios fundamentos e grafias. Revisar com as lideranças.
+export const GLOSSARIO = {
+  'Axé': 'Força vital sagrada que circula entre pessoas, natureza e divindades. Também nomeia a própria comunidade de uma casa.',
+  'Candomblé': 'Religião afro-brasileira de culto aos orixás, inkices ou voduns, organizada em nações (Ketu, Angola, Jeje, Efòn, entre outras).',
+  'Umbanda': 'Religião brasileira que reúne heranças africanas, indígenas e do espiritismo, com giras de caboclos, pretos-velhos, crianças, exus e outras linhas.',
+  'Omolokô': 'Tradição afro-brasileira de raiz banto, aproximada da Umbanda, difundida no Rio de Janeiro por Tancredo da Silva Pinto.',
+  'Ifá': 'Sistema religioso e oracular iorubá ligado a Orunmilá, conduzido por babalaôs.',
+  'Kimbanda': 'Tradição afro-brasileira dedicada às linhas de exus e pombagiras.',
+  'Nação': 'No Candomblé, a linhagem ritual e linguística de uma casa: Ketu e Efòn (iorubá), Angola (banto), Jeje (fon), entre outras.',
+  'Ketu': 'Nação do Candomblé de origem iorubá, de culto aos orixás.',
+  'Angola': 'Nação do Candomblé de origem banto, de culto aos inkices.',
+  'Jeje': 'Nação do Candomblé de origem fon (atual Benim), de culto aos voduns.',
+  'Efòn': 'Nação do Candomblé de origem iorubá, ligada à região de Efòn-Alayé.',
+  'Orixá': 'Divindade do panteão iorubá, como Oxum, Ogum, Xangô e Iemanjá.',
+  'Inkice': 'Divindade cultuada nas nações de origem banto (Angola, Congo).',
+  'Vodum': 'Divindade cultuada na nação Jeje.',
+  'Babalorixá': 'Sacerdote que lidera uma casa de Candomblé de nação iorubá ("pai de santo").',
+  'Yalorixá': 'Sacerdotisa que lidera uma casa de Candomblé de nação iorubá ("mãe de santo").',
+  'Tata': 'Título de sacerdote nas nações de origem banto (Angola), como em Tata de Inkice.',
+  'Mametu': 'Título de sacerdotisa nas nações de origem banto (Angola), como em Mametu de Inkice.',
+  'Doté': 'Título de sacerdote na nação Jeje.',
+  'Doné': 'Título de sacerdotisa na nação Jeje.',
+  'Babalaô': 'Sacerdote de Ifá, responsável pela consulta oracular.',
+  'Pai de Santo': 'Forma popular de chamar o sacerdote que lidera uma casa de axé.',
+  'Mãe de Santo': 'Forma popular de chamar a sacerdotisa que lidera uma casa de axé.',
+  'Gira': 'Cerimônia da Umbanda e do Omolokô em que as entidades se manifestam, com cantos (pontos) e atendimento.',
+  'Xirê': 'Roda de dança e cantigas em louvor aos orixás, em festas públicas do Candomblé.',
+  'Caboclo': 'Entidade de origem indígena cultuada na Umbanda e em muitas casas de Candomblé.',
+  'Preto-Velho': 'Entidade que representa a sabedoria de pessoas negras escravizadas; marca forte da Umbanda.',
+  'Curimba': 'Grupo de atabaques e cantos que conduz a gira na Umbanda.',
+  'Ogã': 'Cargo masculino de quem toca, canta ou cuida da casa, sem entrar em transe.',
+  'Ekedi': 'Cargo feminino de quem cuida dos orixás e das pessoas em transe, sem entrar em transe.',
+  'Economia do Axé': 'Comércio e serviços ligados às religiões de matriz africana: ervas, louças, guias, roupas e artesanato.',
+};
+
+// Orientações gerais para visitar uma casa de axé (cada casa tem seus fundamentos).
+export const ORIENTACOES_VISITA = [
+  'Confirme dia e horário com a casa antes de ir: festas e giras públicas podem mudar.',
+  'Use roupas claras e discretas; pergunte se a casa tem alguma orientação de vestimenta.',
+  'Não fotografe nem filme sem autorização.',
+  'Silencie o celular e siga as orientações de quem recebe (ogãs, ekedis, cambones) sobre onde ficar.',
+  'Não toque em objetos sagrados, assentamentos ou pessoas em transe sem orientação.',
+  'Não leve comida ou bebida sem combinar antes.',
+];

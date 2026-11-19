@@ -1,11 +1,14 @@
 // Drawer lateral (desktop) / bottom sheet (mobile) com a ficha completa da casa.
-import { MENSAGEM_WHATSAPP, MENSAGEM_WHATSAPP_ENDERECO, RAIO_APROXIMADO_M, SEGMENTOS, segmentoDe } from './constants.js';
+import {
+  GLOSSARIO, MENSAGEM_WHATSAPP, MENSAGEM_WHATSAPP_ENDERECO, ORIENTACOES_VISITA, RAIO_APROXIMADO_M, SEGMENTOS, segmentoDe,
+} from './constants.js';
+import { giraNoDia, rruleDaGira } from './giras.js';
 import { api } from './api.js';
-import { esc, formatarTelefone, icones, linkInstagramSeguro, linkWhatsapp } from './utils.js';
+import { esc, formatarTelefone, icones, linkInstagramSeguro, linkWhatsapp, toast } from './utils.js';
 
 const drawer = () => document.getElementById('drawer');
 
-export function abrirDetalhe(casa, { aoFechar }) {
+export function abrirDetalhe(casa, { aoFechar, aoAbrirTermo }) {
   const el = drawer();
   el.dataset.slug = casa.slug;
   document.getElementById('drawer-conteudo').innerHTML = htmlDetalhe(casa);
@@ -14,6 +17,8 @@ export function abrirDetalhe(casa, { aoFechar }) {
   el.setAttribute('aria-hidden', 'false');
   el.querySelector('[data-fechar-drawer]').addEventListener('click', aoFechar);
   el.querySelector('#form-desbloqueio')?.addEventListener('submit', (e) => desbloquear(e, casa));
+  el.querySelector('[data-compartilhar]').addEventListener('click', () => compartilhar(casa));
+  el.querySelectorAll('[data-termo]').forEach((b) => b.addEventListener('click', () => aoAbrirTermo?.(b.dataset.termo)));
   el.focus({ preventScroll: true });
   // Já desbloqueou nesta sessão? Libera sem pedir a senha de novo (cookie HttpOnly).
   if (casa.contato_restrito && sessaoProvavel()) liberar(casa).catch(() => esquecerSessao());
@@ -83,24 +88,51 @@ async function desbloquear(e, casa) {
 
 export const detalheAberto = () => drawer().classList.contains('aberto');
 
+// Compartilhar: o link /casa/<slug> abre o site já na casa, com prévia própria.
+async function compartilhar(casa) {
+  const url = new URL(`/casa/${casa.slug}`, location.origin).href;
+  const dados = { title: casa.nome_casa, text: `${casa.nome_casa} — Mapa do Povo de Santo de Petrópolis`, url };
+  try {
+    if (navigator.share) return await navigator.share(dados);
+    await navigator.clipboard.writeText(url);
+    toast('Link copiado.', 'ok');
+  } catch (err) {
+    if (err?.name !== 'AbortError') toast(`Copie o link: ${url}`, 'info');
+  }
+}
+
+// Termo conhecido do glossário vira um botão que abre a explicação.
+function termo(texto) {
+  if (!texto) return '';
+  const chave = Object.keys(GLOSSARIO).find((t) => t.toLowerCase() === String(texto).toLowerCase());
+  return chave
+    ? `<button type="button" class="termo" data-termo="${esc(chave)}" aria-label="${esc(texto)} (ver no glossário)">${esc(texto)}</button>`
+    : esc(texto);
+}
+
 function htmlDetalhe(c) {
   const seg = SEGMENTOS[segmentoDe(c)];
   const aproximado = c.nivel_privacidade === 'Aproximado';
   const whats = linkWhatsapp(c.whatsapp_contato, aproximado ? MENSAGEM_WHATSAPP_ENDERECO : MENSAGEM_WHATSAPP);
   const insta = linkInstagramSeguro(c.instagram_url);
   const idade = c.ano_fundacao ? new Date().getFullYear() - c.ano_fundacao : null;
-  const subtitulo = [c.nacao_linha, c.orixa_guia_regente].filter(Boolean).map(esc).join(' · ');
+  const subtitulo = [termo(c.nacao_linha), esc(c.orixa_guia_regente || '')].filter(Boolean).join(' · ');
+  const temAgenda = c.calendario_giras.some((g) => rruleDaGira(g));
 
   const giras = c.calendario_giras.length
-    ? c.calendario_giras.map((g) => `
-        <li class="flex gap-3 rounded-xl bg-white/[0.04] p-3">
+    ? c.calendario_giras.map((g) => {
+      const hoje = giraNoDia(g);
+      return `
+        <li class="flex gap-3 rounded-xl p-3 ${hoje === 'sim' ? 'bg-mata/15 ring-1 ring-mata/50' : 'bg-white/[0.04]'}">
           <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-terracota/15 text-terracota-400"><i data-lucide="calendar-days" class="h-4 w-4"></i></span>
           <span class="min-w-0 text-sm">
             <strong class="block text-algodao">${esc(g.tipo || 'Atendimento')}</strong>
             <span class="text-stone-300">${esc(g.dia)}${g.horario ? ` · ${esc(g.horario)}` : ''}</span>
             ${g.frequencia ? `<span class="block text-xs text-stone-400">${esc(g.frequencia)}</span>` : ''}
+            ${hoje === 'sim' ? '<span class="selo-hoje mt-1">Hoje</span>' : hoje === 'talvez' ? '<span class="selo-hoje mt-1">Pode ser hoje (quinzenal)</span>' : ''}
           </span>
-        </li>`).join('')
+        </li>`;
+    }).join('')
     : '<li class="text-sm text-stone-400">A casa não divulgou um calendário público. Fale pelo WhatsApp.</li>';
 
   const acoes = c.acoes_sociais.length
@@ -126,7 +158,8 @@ function htmlDetalhe(c) {
       <div class="flex items-start gap-3">
         <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider"
               style="background:${seg.cor}26;color:${seg.cor}"><span class="dot" style="background:${seg.cor}"></span>${esc(c.categoria === 'Economia do Axé' ? 'Economia do Axé' : c.vertente)}</span>
-        <button type="button" data-fechar-drawer class="btn-ghost ml-auto h-9 w-9 shrink-0 p-0" aria-label="Fechar detalhes"><i data-lucide="x" class="h-4 w-4"></i></button>
+        <button type="button" data-compartilhar class="btn-ghost ml-auto h-9 w-9 shrink-0 p-0" aria-label="Compartilhar esta casa"><i data-lucide="share-2" class="h-4 w-4"></i></button>
+        <button type="button" data-fechar-drawer class="btn-ghost h-9 w-9 shrink-0 p-0" aria-label="Fechar detalhes"><i data-lucide="x" class="h-4 w-4"></i></button>
       </div>
 
       <h2 class="mt-3 font-display text-2xl font-bold leading-tight">${esc(c.nome_casa)}</h2>
@@ -135,7 +168,7 @@ function htmlDetalhe(c) {
       <dl class="mt-5 grid grid-cols-2 gap-2">
         ${c.lideranca_nome_religioso ? `
         <div class="col-span-2 rounded-2xl bg-white/[0.04] p-3.5">
-          <dt class="text-[11px] uppercase tracking-wider text-stone-400">${esc(c.lideranca_titulo || 'Liderança')}</dt>
+          <dt class="text-[11px] uppercase tracking-wider text-stone-400">${c.lideranca_titulo ? termo(c.lideranca_titulo) : 'Liderança'}</dt>
           <dd class="mt-0.5 font-semibold">${esc(c.lideranca_nome_religioso)}</dd>
         </div>` : ''}
         ${c.ano_fundacao ? `
@@ -160,6 +193,8 @@ function htmlDetalhe(c) {
       <section class="mt-6">
         <h3 class="section-title">${c.categoria === 'Economia do Axé' ? 'Funcionamento' : 'Giras e atendimentos'}</h3>
         <ul class="mt-2 space-y-2">${giras}</ul>
+        ${temAgenda ? `<a href="/api/agenda.ics?slug=${encodeURIComponent(c.slug)}" class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-ouro hover:underline">
+          <i data-lucide="calendar-plus" class="h-3.5 w-3.5"></i> Adicionar as giras à minha agenda</a>` : ''}
       </section>
 
       ${acoes ? `
@@ -175,9 +210,13 @@ function htmlDetalhe(c) {
         ${insta ? `<a href="${esc(insta)}" target="_blank" rel="noopener noreferrer" class="btn-ghost w-full"><i data-lucide="instagram" class="h-4 w-4"></i>Instagram</a>` : ''}
       </section>
 
-      <p class="mt-6 rounded-xl bg-black/30 p-3 text-xs leading-relaxed text-stone-400">
-        <i data-lucide="info" class="mr-1 inline h-3.5 w-3.5 align-[-2px]"></i>
-        Ao visitar, respeite os fundamentos da casa: chegue no horário, prefira roupas claras e pergunte antes de fotografar.
-      </p>
+      <details class="group mt-6 rounded-xl bg-black/30 p-3 text-xs leading-relaxed text-stone-300">
+        <summary class="flex cursor-pointer list-none items-center gap-2 font-semibold text-algodao">
+          <i data-lucide="info" class="h-3.5 w-3.5 text-ouro"></i> Como visitar uma casa de axé
+          <i data-lucide="chevron-down" class="ml-auto h-4 w-4 transition group-open:rotate-180"></i>
+        </summary>
+        <ul class="mt-2 list-disc space-y-1 pl-5">${ORIENTACOES_VISITA.map((o) => `<li>${esc(o)}</li>`).join('')}</ul>
+        <p class="mt-2 text-stone-400">Orientações gerais: cada casa tem seus próprios fundamentos.</p>
+      </details>
     </article>`;
 }

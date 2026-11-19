@@ -82,6 +82,12 @@
 
         <div class="flex flex-wrap gap-1.5" id="filtro-segmentos" role="group" aria-label="Segmentos (legenda do mapa)"></div>
 
+        <div class="flex flex-wrap gap-1.5" role="group" aria-label="Atalhos">
+          <button type="button" class="chip" id="filtro-hoje" aria-pressed="false"><i data-lucide="calendar-check" class="h-3.5 w-3.5"></i>Gira hoje</button>
+          <button type="button" class="chip" id="filtro-area" aria-pressed="false"><i data-lucide="scan" class="h-3.5 w-3.5"></i>Só nesta área</button>
+          <button type="button" class="chip" id="perto-de-mim" aria-pressed="false"><i data-lucide="locate-fixed" class="h-3.5 w-3.5"></i>Perto de mim</button>
+        </div>
+
         <details class="group" id="filtros-avancados">
           <summary class="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold uppercase tracking-wider text-stone-400 hover:text-algodao">
             <i data-lucide="sliders-horizontal" class="h-3.5 w-3.5"></i> Filtros
@@ -92,6 +98,12 @@
             <select id="filtro-vertente" class="field" aria-label="Vertente ou nação"></select>
             <select id="filtro-distrito" class="field" aria-label="Distrito de Petrópolis"></select>
             <select id="filtro-acao" class="field" aria-label="Ação social"></select>
+            <select id="ordenacao" class="field" aria-label="Ordenar lista">
+              <option value="centro">Ordenar: perto do centro do mapa</option>
+              <option value="nome">Ordenar: nome</option>
+              <option value="antigas">Ordenar: mais antigas</option>
+              <option value="distancia" hidden>Ordenar: perto de mim</option>
+            </select>
           </div>
         </details>
 
@@ -101,7 +113,7 @@
         </div>
       </div>
 
-      <div class="kente mx-4 rounded-full opacity-70"></div>
+      <div class="ornamento mx-4"></div>
 
       <ul id="lista-casas" class="scroll-fino flex-1 space-y-2 overflow-y-auto px-4 py-3" aria-label="Casas encontradas" aria-busy="true">
         <li class="esqueleto"></li><li class="esqueleto"></li><li class="esqueleto"></li>
@@ -110,9 +122,18 @@
       <div class="flex items-center gap-4 border-t border-white/5 px-4 py-2.5 text-[11px] text-stone-400">
         <span class="flex items-center gap-1.5"><i data-lucide="map-pin" class="h-3.5 w-3.5 text-algodao"></i> Local exato</span>
         <span class="flex items-center gap-1.5"><span class="inline-block h-3.5 w-3.5 rounded-full border border-dashed border-algodao/70 bg-algodao/10"></span> Área aproximada (500 m)</span>
-        <a href="/privacidade.html" class="ml-auto font-semibold text-ouro hover:underline">Privacidade</a>
       </div>
+      <nav class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/5 px-4 py-2.5 text-[11px] font-semibold" aria-label="Mais">
+        <button type="button" class="text-ouro hover:underline" data-abrir="modal-minha-casa">Editar minha casa</button>
+        <button type="button" class="text-ouro hover:underline" data-abrir="modal-glossario">Glossário</button>
+        <a href="/censo.html" class="text-ouro hover:underline">Censo</a>
+        <a href="/privacidade.html" class="text-ouro hover:underline">Privacidade</a>
+        <button type="button" class="text-stone-400 hover:underline" id="rever-boas-vindas">Como funciona</button>
+      </nav>
     </aside>
+
+    <!-- Carrossel de casas (só no celular, com o painel recolhido) -->
+    <div id="carrossel" aria-label="Casas no mapa" role="list"></div>
 
     <!-- Drawer de detalhes da casa -->
     <aside id="drawer" class="glass" aria-label="Detalhes da casa" aria-hidden="true" tabindex="-1">
@@ -193,6 +214,58 @@
           <li>A liberdade de crença e a proteção aos locais de culto estão no <strong>art. 5º, VI, da Constituição</strong>.</li>
         </ul>
       </div>
+    </div>
+  </div>
+
+
+  <!-- ===================== MODAL: BOAS-VINDAS ===================== -->
+  <div id="modal-boas-vindas" class="modal items-end justify-center md:items-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="titulo-boas-vindas">
+    <div class="modal-fundo" data-fechar></div>
+    <div class="glass scroll-fino relative max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl p-6 md:rounded-3xl md:p-7">
+      <p class="section-title">Bem-vindo, bem-vinda</p>
+      <h2 id="titulo-boas-vindas" class="mt-1 font-display text-2xl font-bold">Mapa do Povo de Santo de Petrópolis</h2>
+      <p class="mt-3 text-sm leading-relaxed text-stone-300">Um mapa feito com e para as casas de Umbanda, Candomblé e demais tradições de matriz africana dos 5 distritos da cidade. <strong class="text-algodao">Cada casa decide como aparece:</strong></p>
+      <ul class="mt-4 space-y-3 text-sm">
+        <li class="flex gap-3"><span class="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5"><i data-lucide="map-pin" class="h-4 w-4 text-ouro"></i></span><span><strong class="block">Pino</strong><span class="text-stone-300">a casa mostra o endereço.</span></span></li>
+        <li class="flex gap-3"><span class="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5"><i data-lucide="circle-dashed" class="h-4 w-4 text-ouro"></i></span><span><strong class="block">Círculo ou pino vazado</strong><span class="text-stone-300">só o bairro e uma área de ~500 m; o endereço é combinado com a casa.</span></span></li>
+        <li class="flex gap-3"><span class="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5"><i data-lucide="eye-off" class="h-4 w-4 text-ouro"></i></span><span><strong class="block">Fora do mapa</strong><span class="text-stone-300">a casa entra apenas nos números do censo, sem ser identificada.</span></span></li>
+      </ul>
+      <div class="mt-6 flex flex-col gap-2 sm:flex-row">
+        <button type="button" class="btn-primary flex-1" data-fechar><i data-lucide="map" class="h-4 w-4"></i>Explorar o mapa</button>
+        <button type="button" class="btn-ghost flex-1" data-fechar data-depois-abrir="modal-cadastro"><i data-lucide="plus" class="h-4 w-4"></i>Cadastrar minha casa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: GLOSSÁRIO ===================== -->
+  <div id="modal-glossario" class="modal items-end justify-center md:items-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="titulo-glossario">
+    <div class="modal-fundo" data-fechar></div>
+    <div class="glass relative flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl md:rounded-3xl">
+      <div class="flex items-start gap-3 border-b border-white/10 px-6 py-4">
+        <div>
+          <p class="section-title">Para conhecer e respeitar</p>
+          <h2 id="titulo-glossario" class="font-display text-xl font-bold">Glossário</h2>
+        </div>
+        <button type="button" class="btn-ghost ml-auto h-10 w-10 p-0" data-fechar aria-label="Fechar"><i data-lucide="x" class="h-5 w-5"></i></button>
+      </div>
+      <div class="px-6 pt-4"><input id="glossario-busca" type="search" class="field" placeholder="Buscar termo…" aria-label="Buscar termo no glossário" /></div>
+      <dl id="glossario-lista" class="scroll-fino flex-1 space-y-3 overflow-y-auto px-6 py-4"></dl>
+      <p class="border-t border-white/10 px-6 py-3 text-xs text-stone-400">Definições introdutórias. Cada casa e cada nação têm seus próprios fundamentos e grafias.</p>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: MINHA CASA ===================== -->
+  <div id="modal-minha-casa" class="modal items-end justify-center md:items-center md:p-6" role="dialog" aria-modal="true" aria-labelledby="titulo-minha-casa">
+    <div class="modal-fundo" data-fechar></div>
+    <div class="glass scroll-fino relative max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl p-6 md:rounded-3xl md:p-7">
+      <div class="flex items-start gap-3">
+        <div>
+          <p class="section-title">Área da casa</p>
+          <h2 id="titulo-minha-casa" class="font-display text-xl font-bold">Editar minha casa</h2>
+        </div>
+        <button type="button" class="btn-ghost ml-auto h-10 w-10 shrink-0 p-0" data-fechar aria-label="Fechar"><i data-lucide="x" class="h-5 w-5"></i></button>
+      </div>
+      <div id="minha-casa-conteudo" class="mt-4"></div>
     </div>
   </div>
 
