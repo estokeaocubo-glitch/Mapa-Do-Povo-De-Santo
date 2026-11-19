@@ -2,6 +2,10 @@
 // pelo binding ASSETS). Banco de dados: Cloudflare D1 (binding DB).
 import { HttpError, json } from './http.js';
 import { admin } from './rotas/admin.js';
+import { agenda } from './rotas/agenda.js';
+import { dadosAbertos } from './rotas/dados-abertos.js';
+import { minhaCasa } from './rotas/minha-casa.js';
+import { paginaCasa } from './rotas/pagina-casa.js';
 import { cadastro } from './rotas/cadastro.js';
 import { desbloquear } from './rotas/desbloquear.js';
 import { estatisticas } from './rotas/estatisticas.js';
@@ -13,6 +17,9 @@ const ROTAS = {
   '/api/cadastro': cadastro,
   '/api/desbloquear': desbloquear,
   '/api/admin': admin,
+  '/api/minha-casa': minhaCasa,
+  '/api/dados-abertos': dadosAbertos,
+  '/api/agenda.ics': agenda,
 };
 
 // Cabeçalhos de segurança das respostas da API (o site estático usa public/_headers).
@@ -31,6 +38,16 @@ export default {
 
     if (!rota) {
       if (url.pathname.startsWith('/api/')) return comSeguranca(json(404, { erro: 'Rota não encontrada.' }));
+      // Página da casa: o HTML do site com a prévia de compartilhamento da casa.
+      // Mantém os cabeçalhos do site estático (CSP de public/_headers).
+      if (url.pathname.startsWith('/casa/') && request.method === 'GET') {
+        try {
+          return await paginaCasa(request, env, url);
+        } catch (err) {
+          console.error('[casa]', err?.stack || err);
+          return env.ASSETS.fetch(new Request(new URL('/', url), request));
+        }
+      }
       return env.ASSETS.fetch(request);
     }
 

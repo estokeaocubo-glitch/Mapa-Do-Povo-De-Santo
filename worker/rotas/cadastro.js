@@ -1,5 +1,6 @@
 // POST /api/cadastro → envia uma casa para a FILA DE MODERAÇÃO.
 // O status é sempre 'Pendente'; nada do que o cliente mandar publica direto.
+import { gerarCodigo, hashCodigo } from '../../lib/codigos.js';
 import { excedeuLimite, registrarTentativa } from '../../lib/limite.js';
 import { coordenadaPublica } from '../../lib/privacy.js';
 import { normalizarNome, slugify, validarCadastro } from '../../lib/validation.js';
@@ -41,6 +42,8 @@ export async function cadastro(request, env) {
   // SEGURANÇA GEOGRÁFICA: a coordenada pública é calculada aqui, uma única
   // vez. O CHECK do banco recusa gravar 'Aproximado' sem deslocamento.
   const pub = coordenadaPublica(dados.nivel_privacidade, dados.lat_real, dados.lng_real);
+  // Código de edição: mostrado UMA vez a quem cadastrou; só o hash fica no banco.
+  const codigoEdicao = gerarCodigo(3);
 
   await env.DB.prepare(
     `INSERT INTO terreiros (
@@ -48,21 +51,22 @@ export async function cadastro(request, env) {
        lideranca_titulo, lideranca_nome_religioso, ano_fundacao, distrito, bairro,
        endereco_completo, lat_real, lng_real, lat_publica, lng_publica, nivel_privacidade,
        historia_resumo, calendario_giras, acoes_sociais, whatsapp_contato, instagram_url,
-       status_moderacao, consentimento_lgpd_em
+       status_moderacao, consentimento_lgpd_em, codigo_edicao_hash
      ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,
-               'Pendente', strftime('%Y-%m-%dT%H:%M:%fZ','now'))`,
+               'Pendente', strftime('%Y-%m-%dT%H:%M:%fZ','now'), ?24)`,
   ).bind(
     id, dados.nome_casa, slug, dados.categoria, dados.vertente, dados.nacao_linha, dados.orixa_guia_regente,
     dados.lideranca_titulo, dados.lideranca_nome_religioso, dados.ano_fundacao, dados.distrito, dados.bairro,
     dados.endereco_completo, dados.lat_real, dados.lng_real, pub.lat, pub.lng, dados.nivel_privacidade,
     dados.historia_resumo, JSON.stringify(dados.calendario_giras), JSON.stringify(dados.acoes_sociais),
-    dados.whatsapp_contato, dados.instagram_url,
+    dados.whatsapp_contato, dados.instagram_url, await hashCodigo(codigoEdicao),
   ).run();
   await registrarTentativa(env, 'cadastro', ip);
 
   return json(201, {
     ok: true,
     protocolo: id.slice(0, 8).toUpperCase(),
+    codigo_edicao: codigoEdicao,
     mensagem: 'Cadastro recebido! Ele passará pela moderação da comunidade antes de aparecer no mapa.',
   });
 }

@@ -89,3 +89,16 @@ test('censo: categoria pequena com casa oculta não tem número publicado', () =
   assert.equal(s.mais_antigas[0].nacao_linha, null);
   assert.equal(s.casas_ocultas, 1);
 });
+
+test('giras: dias, frequência e "gira hoje"', async () => {
+  const { diasDaSemana, giraNoDia, horarioInicial } = await import('../public/js/giras.js');
+  assert.deepEqual(diasDaSemana('Segunda a sábado'), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(diasDaSemana('Sexta e sábado'), [5, 6]);
+  const sabado3 = new Date(2026, 10, 21); // 3º sábado de novembro de 2026
+  assert.equal(giraNoDia({ dia: 'Sábado', frequencia: 'Semanal' }, sabado3), 'sim');
+  assert.equal(giraNoDia({ dia: 'Sábado', frequencia: '3ª semana do mês' }, sabado3), 'sim');
+  assert.equal(giraNoDia({ dia: 'Sábado', frequencia: '1º sábado do mês' }, sabado3), 'nao');
+  assert.equal(giraNoDia({ dia: 'Sábado', frequencia: 'Quinzenal' }, sabado3), 'talvez');
+  assert.equal(giraNoDia({ dia: 'Domingo', frequencia: 'Semanal' }, sabado3), 'nao');
+  assert.equal(horarioInicial('20h30'), '20:30');
+});
