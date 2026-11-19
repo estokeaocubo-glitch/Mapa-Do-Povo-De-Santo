@@ -27,6 +27,12 @@ export const TITULOS_LIDERANCA = [
   'Pai de Santo', 'Mãe de Santo', 'Zelador(a)', 'Dirigente',
 ];
 
+// Chave dos mapas da CARTO (obrigatória desde 25/09/2026; gratuita em
+// carto.com/basemaps/apikey). Ela é pública por natureza: aparece em toda
+// requisição de bloco. Proteja-a restringindo-a ao domínio do site no painel
+// da CARTO — por isso os blocos enviam só a origem do site (ver map.js).
+export const CHAVE_CARTO = 'cb1_5c7g_1_9ec33ccb9150dc5162950c73';
+
 export const CENTRO_PETROPOLIS = [-22.43, -43.16];
 export const RAIO_APROXIMADO_M = 500;
 

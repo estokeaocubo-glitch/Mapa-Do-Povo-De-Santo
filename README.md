@@ -42,6 +42,8 @@ npx wrangler secret put ACESSO_RESTRITO_HASH    # cole o hash
 npx wrangler secret put ADMIN_TOKENS            # formato: "Mãe Ana:token1;Pedro:token2" (tokens com 24+ caracteres)
 openssl rand -hex 32 | npx wrangler secret put IP_SALT
 npm run distritos                               # baixa do IBGE os limites dos 5 distritos (uma vez)
+# Mapa: peça a chave gratuita em carto.com/basemaps/apikey, restrinja-a ao domínio
+# do site (e a localhost:8787 para testes) e cole em CHAVE_CARTO (public/js/constants.js).
 # Antes de publicar: preencha responsável e contato em public/privacidade.html (item 1).
 
 npm run deploy                                  # publica em https://mapa-povo-de-santo.<sua-conta>.workers.dev
@@ -111,7 +113,7 @@ A moderação é feita em `/admin.html`: você cola o `ADMIN_TOKEN` e aprova, re
 - O cadastro tem limite de 5 envios **aceitos** por hora; erros de preenchimento não contam. Duplicatas (mesmo nome e bairro) são recusadas.
 - O D1 não é acessível pela internet, apenas pelo Worker.
 - O cadastro não usa geocodificação externa: a casa é marcada no mapa, e o endereço não é enviado a terceiros.
-- Cabeçalhos de segurança: CSP sem nenhum recurso de terceiros além dos blocos do mapa (fontes e ícones são servidos pelo próprio site), HSTS e `Referrer-Policy: no-referrer`, para que WhatsApp e Instagram não saibam qual casa foi consultada.
+- Cabeçalhos de segurança: CSP sem nenhum recurso de terceiros além dos blocos do mapa (fontes e ícones são servidos pelo próprio site), HSTS e `Referrer-Policy: no-referrer`, para que WhatsApp e Instagram não saibam qual casa foi consultada. A única exceção são os blocos do mapa, que enviam só a origem do site (`referrerPolicy: 'origin'`) para a CARTO validar a chave restrita ao domínio.
 
 ## Riscos conhecidos e aceitos
 

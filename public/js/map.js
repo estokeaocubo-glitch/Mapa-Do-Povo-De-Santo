@@ -5,7 +5,7 @@
 //  • 'Aproximado' → coordenada JÁ OFUSCADA pelo servidor. Com o mapa afastado
 //    (zoom < 13) vira um pino "vazado", agrupado com os outros; de perto, um
 //    círculo de 500 m. O navegador nunca recebe a coordenada real.
-import { CENTRO_PETROPOLIS, SEGMENTOS, segmentoDe } from './constants.js';
+import { CENTRO_PETROPOLIS, CHAVE_CARTO, SEGMENTOS, segmentoDe } from './constants.js';
 import { temaEfetivo } from './tema.js';
 import { esc } from './utils.js';
 
@@ -32,8 +32,7 @@ export function criarMapa(elementoId, { aoSelecionar, aoMover }) {
   L.control.zoom({ position: 'bottomright' }).addTo(mapa);
 
   const blocos = L.tileLayer(urlBlocos(), {
-    subdomains: 'abcd',
-    maxZoom: 19,
+    ...OPCOES_BLOCOS,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
   }).addTo(mapa);
   window.addEventListener('tema:mudou', () => blocos.setUrl(urlBlocos()));
@@ -57,8 +56,14 @@ export function criarMapa(elementoId, { aoSelecionar, aoMover }) {
   return mapa;
 }
 
-// Blocos claros ou escuros da CARTO, conforme o tema.
-export const urlBlocos = () => `https://{s}.basemaps.cartocdn.com/${temaEfetivo() === 'claro' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
+// Blocos claros ou escuros da CARTO, conforme o tema (com a chave da conta).
+export const urlBlocos = () =>
+  `https://{s}.basemaps.cartocdn.com/${temaEfetivo() === 'claro' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CHAVE_CARTO)}`;
+
+// Opções comuns aos mapas do site. referrerPolicy 'origin': só nos blocos, a
+// CARTO recebe o domínio do site (para conferir a restrição da chave), nunca o
+// caminho — /casa/<slug> continua sem vazar. O resto do site segue no-referrer.
+export const OPCOES_BLOCOS = { subdomains: 'abcd', maxZoom: 19, referrerPolicy: 'origin' };
 
 function iconePino(casa, { ativo = false, aproximado = false } = {}) {
   const seg = SEGMENTOS[segmentoDe(casa)];
