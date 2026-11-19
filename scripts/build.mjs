@@ -66,8 +66,9 @@ for (const [familia, lista] of pesos) {
 }
 await writeFile(out('fonts/fonts.css'), css);
 
-// 4. Tailwind
-execFileSync(nm('.bin/tailwindcss'), ['-i', `${root}src/styles.css`, '-o', `${root}public/assets/app.css`, '--minify'], {
+// 4. Tailwind — roda o CLI com o próprio Node (process.execPath) em vez do
+//    atalho node_modules/.bin, que no Windows é um .cmd e falha com ENOENT.
+execFileSync(process.execPath, [nm('@tailwindcss/cli/dist/index.mjs'), '-i', `${root}src/styles.css`, '-o', `${root}public/assets/app.css`, '--minify'], {
   stdio: ['ignore', 'ignore', 'inherit'], cwd: root,
 });
 console.log(`✔ build concluído (${nomes.length} ícones Lucide)`);
