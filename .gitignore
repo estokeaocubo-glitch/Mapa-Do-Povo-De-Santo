@@ -6,3 +6,5 @@ public/assets/app.css
 # Dados reais das casas (nomes, telefones): nunca no git.
 db/seed-real.json
 db/gerado/
+# Segredos de produção gerados localmente (nunca no git).
+.segredos-producao.env

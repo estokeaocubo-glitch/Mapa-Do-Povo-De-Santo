@@ -1,6 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mapa-povo-de-santo",
+  // Conta Cloudflare do projeto (estokeaocubo). Fixa o destino do deploy.
+  "account_id": "042ccc1803a61784e3fff7e8e411cb2d",
   "main": "worker/index.js",
   "compatibility_date": "2025-09-01",
   "workers_dev": true,
@@ -18,8 +20,8 @@
     {
       "binding": "DB",
       "database_name": "mapa-povo-de-santo",
-      // PREENCHER: ID real gerado por `wrangler d1 create` (o valor abaixo só serve para rodar localmente).
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Banco de produção na conta estokeaocubo (criado em 19/11/2026, região ENAM).
+      "database_id": "b9f30ae2-5202-4fb8-a830-0cf4d445c4d0",
       "migrations_dir": "migrations"
     }
   ],
