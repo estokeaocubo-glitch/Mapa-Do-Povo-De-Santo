@@ -6,6 +6,7 @@
 //    (zoom < 13) vira um pino "vazado", agrupado com os outros; de perto, um
 //    círculo de 500 m. O navegador nunca recebe a coordenada real.
 import { CENTRO_PETROPOLIS, SEGMENTOS, segmentoDe } from './constants.js';
+import { temaEfetivo } from './tema.js';
 import { esc } from './utils.js';
 
 const ZOOM_AREA = 13;   // a partir daqui, área aproximada aparece como círculo
@@ -30,11 +31,12 @@ export function criarMapa(elementoId, { aoSelecionar, aoMover }) {
   });
   L.control.zoom({ position: 'bottomright' }).addTo(mapa);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  const blocos = L.tileLayer(urlBlocos(), {
     subdomains: 'abcd',
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
   }).addTo(mapa);
+  window.addEventListener('tema:mudou', () => blocos.setUrl(urlBlocos()));
 
   cluster = L.markerClusterGroup({
     showCoverageOnHover: false,
@@ -54,6 +56,9 @@ export function criarMapa(elementoId, { aoSelecionar, aoMover }) {
   if (aoMover) mapa.on('moveend', () => aoMover());
   return mapa;
 }
+
+// Blocos claros ou escuros da CARTO, conforme o tema.
+export const urlBlocos = () => `https://{s}.basemaps.cartocdn.com/${temaEfetivo() === 'claro' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
 
 function iconePino(casa, { ativo = false, aproximado = false } = {}) {
   const seg = SEGMENTOS[segmentoDe(casa)];

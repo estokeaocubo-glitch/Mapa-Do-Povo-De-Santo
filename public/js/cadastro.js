@@ -13,6 +13,7 @@ import {
   ACOES_SOCIAIS_SUGERIDAS, CENTRO_PETROPOLIS, DISTRITOS, TEXTO_PRIVACIDADE, TITULOS_LIDERANCA, VERTENTES,
 } from './constants.js';
 import { OPCOES_DIA, OPCOES_FREQUENCIA } from './giras.js';
+import { urlBlocos } from './map.js';
 import { esc, icones, toast } from './utils.js';
 import { validarCadastro } from './validacao.js';
 
@@ -231,9 +232,7 @@ function mostrarCoords({ lat, lng }) {
 function iniciarMiniMapa() {
   if (miniMapa) { setTimeout(() => miniMapa.invalidateSize(), 50); return; }
   miniMapa = L.map('cad-mapa', { center: CENTRO_PETROPOLIS, zoom: 11, zoomControl: true });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd', maxZoom: 19, attribution: '&copy; OpenStreetMap &copy; CARTO',
-  }).addTo(miniMapa);
+  L.tileLayer(urlBlocos(), { subdomains: 'abcd', maxZoom: 19, attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(miniMapa);
   miniMapa.on('click', (e) => { posicionar(e.latlng); salvarRascunho(); });
   if (posicaoPendente) {
     const p = posicaoPendente;

@@ -9,6 +9,7 @@ import {
 import { iniciarCadastro } from './js/cadastro.js';
 import { iniciarMinhaCasa } from './js/minha-casa.js';
 import { renderizarCenso } from './js/censo.js';
+import { iniciarBotaoTema } from './js/tema.js';
 import { debounce, ehMobile, esc, icones, normalizar, toast } from './js/utils.js';
 
 const estado = {
@@ -179,7 +180,7 @@ function htmlCard(c, { compacto = false } = {}) {
   return `
     <button type="button" class="card-casa${compacto ? ' glass !bg-stone-900/95' : ''}" data-id="${esc(c.id)}" aria-current="${c.id === estado.selecionadaId}">
       <div class="flex items-start gap-3">
-        <span class="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-breu" style="background:${seg.cor}" aria-hidden="true">${esc(seg.letra)}</span>
+        <span class="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-tinta" style="background:${seg.cor}" aria-hidden="true">${esc(seg.letra)}</span>
         <span class="min-w-0 flex-1">
           <span class="block truncate font-semibold">${esc(c.nome_casa)}</span>
           <span class="block truncate text-xs text-stone-400">${esc([c.nacao_linha || c.vertente, c.orixa_guia_regente].filter(Boolean).join(' · '))}</span>
@@ -493,6 +494,7 @@ function slugDoEndereco() {
 
 // ============================== Inicialização ==============================
 async function iniciar() {
+  iniciarBotaoTema($('botao-tema'));
   icones();
   criarMapa('mapa', {
     aoSelecionar: (id) => selecionar(id),

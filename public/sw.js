@@ -5,7 +5,7 @@
 //  • Blocos do mapa já vistos: guardados (até 400) para rever sem internet.
 //  • Nada privado é guardado: só respostas públicas (GET). Desbloqueio,
 //    moderação e "minha casa" são POST/autenticados e nunca passam pelo cache.
-const VERSAO = 'mps-v2';
+const VERSAO = 'mps-v3';
 const SITE = `${VERSAO}-site`;
 const DADOS = `${VERSAO}-dados`;
 const MAPA = `${VERSAO}-mapa`;
@@ -13,7 +13,7 @@ const ESSENCIAIS = [
   '/', '/app.js', '/assets/app.css', '/vendor/fonts/fonts.css', '/vendor/leaflet/leaflet.js', '/vendor/leaflet/leaflet.css',
   '/vendor/markercluster/leaflet.markercluster.js', '/vendor/markercluster/MarkerCluster.css', '/vendor/lucide/lucide.min.js',
   '/js/api.js', '/js/cadastro.js', '/js/censo.js', '/js/constants.js', '/js/detalhe.js', '/js/dominio.js', '/js/giras.js',
-  '/js/map.js', '/js/minha-casa.js', '/js/utils.js', '/js/validacao.js', '/favicon.svg', '/manifest.webmanifest',
+  '/js/map.js', '/js/minha-casa.js', '/js/tema.js', '/js/tema-inicial.js', '/js/utils.js', '/js/validacao.js', '/favicon.svg', '/manifest.webmanifest',
 ];
 
 self.addEventListener('install', (e) => {

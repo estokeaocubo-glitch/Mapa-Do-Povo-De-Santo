@@ -23,14 +23,77 @@
   --color-whatsapp: #15803d;        /* branco sobre ela ≈ 5,0:1 */
   --color-whatsapp-hover: #166534;
 
+  /* Cores que NÃO mudam com o tema (texto sobre fundos coloridos). */
+  --color-branco: #ffffff;
+  --color-tinta: #12100e;
+  --color-sobre-ouro: #12100e;
+  --color-selo: #6ee7b7;
+  --color-mapa-fundo: #0d0c0b;
+
   --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
   --font-display: "Cinzel", Georgia, serif;
 }
 
+/* ===================== Tema claro =====================
+   Segue o sistema (prefers-color-scheme) ou a escolha da pessoa (data-tema).
+   O layout usa as mesmas classes: aqui só a paleta é trocada. "white" e
+   "black" invertem porque, no tema escuro, são usados como véus de contraste
+   (bg-white/5, border-white/10, bg-black/30). */
+@layer theme {
+  :root[data-tema="claro"] {
+    --color-white: #1c1917;
+    --color-black: #ffffff;
+    --color-stone-900: #fbf9f5;
+    --color-stone-800: #f1ede6;
+    --color-stone-500: #6b6560;
+    --color-stone-400: #57534e;
+    --color-stone-300: #3f3a36;
+    --color-stone-200: #292524;
+    --color-algodao: #1c1917;
+    --color-breu: #f4f1ea;
+    --color-carvao: #ebe6dd;
+    --color-ouro: #7d5e06;          /* ouro escurecido: 6,2:1 sobre o fundo claro */
+    --color-ouro-300: #664c04;
+    --color-sobre-ouro: #ffffff;
+    --color-terracota-400: #a8461f;
+    --color-red-300: #b42318;
+    --color-red-400: #b42318;
+    --color-selo: #166534;
+    --color-mapa-fundo: #ece8e1;
+    color-scheme: light;
+  }
+}
+@media (prefers-color-scheme: light) {
+  @layer theme {
+    :root:not([data-tema="escuro"]) {
+      --color-white: #1c1917;
+      --color-black: #ffffff;
+      --color-stone-900: #fbf9f5;
+      --color-stone-800: #f1ede6;
+      --color-stone-500: #6b6560;
+      --color-stone-400: #57534e;
+      --color-stone-300: #3f3a36;
+      --color-stone-200: #292524;
+      --color-algodao: #1c1917;
+      --color-breu: #f4f1ea;
+      --color-carvao: #ebe6dd;
+      --color-ouro: #7d5e06;
+      --color-ouro-300: #664c04;
+      --color-sobre-ouro: #ffffff;
+      --color-terracota-400: #a8461f;
+      --color-red-300: #b42318;
+      --color-red-400: #b42318;
+      --color-selo: #166534;
+      --color-mapa-fundo: #ece8e1;
+      color-scheme: light;
+    }
+  }
+}
+
 :root {
   --terracota: #c85a32;
-  --ouro: #d4af37;
-  --breu: #12100e;
+  --ouro: var(--color-ouro);
+  --breu: var(--color-breu);
   --peek: 172px;               /* altura visível do bottom sheet recolhido */
 }
 
@@ -48,10 +111,10 @@ body {
   @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
          transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ouro/70 disabled:opacity-50;
 }
-@utility btn-primary { @apply btn bg-terracota-600 text-white hover:bg-terracota-700; }
+@utility btn-primary { @apply btn bg-terracota-600 text-branco hover:bg-terracota-700; }
 @utility btn-ghost { @apply btn border border-white/10 bg-white/5 text-algodao hover:bg-white/10; }
-@utility btn-gold { @apply btn bg-ouro text-breu hover:bg-ouro-300; }
-@utility btn-whatsapp { @apply btn bg-whatsapp text-white hover:bg-whatsapp-hover; }
+@utility btn-gold { @apply btn bg-ouro text-sobre-ouro hover:bg-ouro-300; }
+@utility btn-whatsapp { @apply btn bg-whatsapp text-branco hover:bg-whatsapp-hover; }
 
 @utility field {
   @apply w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm text-algodao
@@ -89,8 +152,8 @@ select.field {
 .esqueleto { @apply rounded-2xl bg-white/[0.05] animate-pulse; height: 88px; }
 
 /* ===================== Mapa ===================== */
-#mapa { position: fixed; inset: 0; z-index: 0; background: #0d0c0b; }
-.leaflet-container { font-family: inherit; background: #0d0c0b; }
+#mapa { position: fixed; inset: 0; z-index: 0; background: var(--color-mapa-fundo); }
+.leaflet-container { font-family: inherit; background: var(--color-mapa-fundo); }
 .leaflet-control-zoom a { @apply !border-white/10 !bg-stone-900/90 !text-algodao; }
 .leaflet-control-attribution { @apply !bg-black/70 !text-stone-300 text-[10px]; }
 .leaflet-control-attribution a { @apply !text-stone-200; }
@@ -113,7 +176,7 @@ select.field {
   display: grid; place-items: center; font: 700 12px/1 'Plus Jakarta Sans', sans-serif; color: #12100e;
 }
 .pino.aproximado .pino-gota {
-  background: color-mix(in srgb, var(--cor) 28%, #12100e);
+  background: color-mix(in srgb, var(--cor) 28%, var(--color-breu));
   border: 2px dashed var(--cor);
   box-shadow: 0 8px 16px rgba(0, 0, 0, .5);
 }
@@ -186,7 +249,7 @@ select.field {
 /* Barras do censo */
 .barra { height: 10px; border-radius: 0 4px 4px 0; background: var(--cor, var(--terracota)); min-width: 4px; }
 .barra.suprimida { background: repeating-linear-gradient(45deg, var(--cor, var(--terracota)) 0 3px, transparent 3px 6px); }
-.trilho { background: rgba(255, 255, 255, .06); border-radius: 0 4px 4px 0; }
+.trilho { background: color-mix(in srgb, var(--color-white) 7%, transparent); border-radius: 0 4px 4px 0; }
 
 /* Páginas de texto (privacidade) */
 .prosa h2 { @apply mt-8 font-display text-lg font-bold text-ouro; }
@@ -218,7 +281,7 @@ select.field {
 .termo { @apply cursor-help underline decoration-dotted decoration-ouro/70 underline-offset-4 hover:text-ouro; }
 
 /* Selo "gira hoje" */
-.selo-hoje { @apply inline-flex items-center gap-1 rounded-full bg-mata/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-300; }
+.selo-hoje { @apply inline-flex items-center gap-1 rounded-full bg-mata/20 px-2 py-0.5 text-[11px] font-semibold text-selo; }
 
 /* ===================== Impressão (página do censo) ===================== */
 @media print {
@@ -228,4 +291,12 @@ select.field {
   .barra, .barra.suprimida, .ornamento { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .trilho { background: #eee !important; }
   a[href]::after { content: none; }
+}
+
+/* Tema claro: janelas opacas e véu mais leve atrás delas. */
+:root[data-tema="claro"] .modal .glass { background-color: var(--color-stone-900); }
+:root[data-tema="claro"] .modal-fundo { background: rgba(40, 34, 28, .45); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-tema="escuro"]) .modal .glass { background-color: var(--color-stone-900); }
+  :root:not([data-tema="escuro"]) .modal-fundo { background: rgba(40, 34, 28, .45); }
 }
