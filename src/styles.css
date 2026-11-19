@@ -219,3 +219,13 @@ select.field {
 
 /* Selo "gira hoje" */
 .selo-hoje { @apply inline-flex items-center gap-1 rounded-full bg-mata/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-300; }
+
+/* ===================== Impressão (página do censo) ===================== */
+@media print {
+  html, body { background: #fff !important; color: #111 !important; height: auto; overflow: visible !important; }
+  .bento, .glass { background: #fff !important; border-color: #ccc !important; box-shadow: none !important; break-inside: avoid; }
+  [class*="text-stone"], [class*="text-algodao"], .text-ouro, .section-title { color: #111 !important; }
+  .barra, .barra.suprimida, .ornamento { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .trilho { background: #eee !important; }
+  a[href]::after { content: none; }
+}

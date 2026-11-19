@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Censo · Mapa do Povo de Santo de Petrópolis</title>
+  <meta name="description" content="Censo comunitário das casas de Umbanda, Candomblé e tradições de matriz africana de Petrópolis/RJ: distritos, vertentes, nações, ações sociais e casas mais antigas." />
+  <meta property="og:title" content="Censo do Povo de Santo de Petrópolis" />
+  <meta property="og:description" content="O axé de Petrópolis em números, com a privacidade de cada casa respeitada." />
+  <meta property="og:image" content="/og.png" />
+  <meta name="theme-color" content="#12100E" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css" />
+  <link rel="stylesheet" href="/assets/app.css" />
+  <script src="/vendor/lucide/lucide.min.js" defer></script>
+  <script src="/js/censo-pagina.js" type="module"></script>
+</head>
+<body class="overflow-auto">
+  <main class="mx-auto max-w-6xl px-5 py-8 md:py-12">
+    <div class="flex flex-wrap items-center gap-3 print:hidden">
+      <a href="/" class="text-sm font-semibold text-ouro hover:underline">← Voltar ao mapa</a>
+      <div class="ml-auto flex flex-wrap gap-2">
+        <a href="/api/dados-abertos?formato=csv" class="btn-ghost"><i data-lucide="file-spreadsheet" class="h-4 w-4"></i>Baixar CSV</a>
+        <a href="/api/dados-abertos" class="btn-ghost" target="_blank" rel="noopener"><i data-lucide="braces" class="h-4 w-4"></i>JSON</a>
+        <button type="button" id="imprimir" class="btn-primary"><i data-lucide="printer" class="h-4 w-4"></i>Imprimir / PDF</button>
+      </div>
+    </div>
+    <p class="section-title mt-8">Censo comunitário</p>
+    <h1 class="mt-1 font-display text-3xl font-bold md:text-4xl">O Axé de Petrópolis em números</h1>
+    <p class="mt-2 max-w-3xl text-sm text-stone-300">Inclui as casas que preferiram não aparecer no mapa — elas são contadas, mas nunca identificadas. Dados abertos sob licença CC BY 4.0.</p>
+    <div class="ornamento mt-5 w-40"></div>
+    <div id="censo-conteudo" class="mt-8"><p class="text-sm text-stone-300">Carregando…</p></div>
+    <section class="mt-10 rounded-2xl border border-white/10 p-5 text-xs leading-relaxed text-stone-300">
+      <h2 class="section-title">Metodologia</h2>
+      <p class="mt-2">Autodeclaração das casas, com moderação comunitária. Grupos com 1 ou 2 casas que contenham alguma casa fora do mapa aparecem como "menos de 3", para que nenhuma casa possa ser identificada. Casas fora do mapa entram no ranking de antiguidade só pela década de fundação.</p>
+      <p class="mt-2">Gerado em <span id="gerado-em">—</span>. Fonte: Mapa do Povo de Santo de Petrópolis.</p>
+    </section>
+  </main>
+</body>
+</html>

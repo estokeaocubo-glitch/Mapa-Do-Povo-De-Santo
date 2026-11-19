@@ -4,7 +4,7 @@ import { DISTRITOS, GLOSSARIO, SEGMENTOS, VERTENTES, segmentoDe } from './js/con
 import { abrirDetalhe, detalheAberto, fecharDetalhe } from './js/detalhe.js';
 import { girasDoDia } from './js/giras.js';
 import {
-  centroDoMapa, criarMapa, enquadrar, estaVisivel, focarCasa, invalidar, marcarAtivo, mostrarUsuario, renderizarCasas,
+  centroDoMapa, criarMapa, destacarDistrito, enquadrar, estaVisivel, focarCasa, invalidar, marcarAtivo, mostrarUsuario, renderizarCasas,
 } from './js/map.js';
 import { iniciarCadastro } from './js/cadastro.js';
 import { iniciarMinhaCasa } from './js/minha-casa.js';
@@ -106,7 +106,9 @@ function montarFiltros() {
   for (const [id, chave] of [['filtro-vertente', 'vertente'], ['filtro-distrito', 'distrito'], ['filtro-acao', 'acao']]) {
     $(id).addEventListener('change', (e) => {
       estado.filtros[chave] = e.target.value;
-      atualizar({ enquadrar: true });
+      // Distrito com limite desenhado: enquadra o distrito inteiro, não só as casas.
+      const enquadrouDistrito = chave === 'distrito' && destacarDistrito(e.target.value);
+      atualizar({ enquadrar: !enquadrouDistrito });
     });
   }
 
@@ -129,6 +131,7 @@ function montarFiltros() {
     estado.filtros.segmentos.clear();
     $('filtro-busca').value = '';
     ['filtro-vertente', 'filtro-distrito', 'filtro-acao'].forEach((id) => { $(id).value = ''; });
+    destacarDistrito('');
     document.querySelectorAll('[data-segmento], #filtro-hoje, #filtro-area').forEach((b) => b.setAttribute('aria-pressed', 'false'));
     atualizar({ enquadrar: true });
   });
@@ -530,3 +533,8 @@ async function iniciar() {
 }
 
 iniciar();
+
+// Uso sem internet (service worker). Só em HTTPS ou localhost.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}

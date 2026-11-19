@@ -14,6 +14,7 @@ let mapa;
 let cluster;
 let camadaAreas;
 let marcadorUsuario = null;
+let camadaDistritos = null;
 const camadas = new Map(); // id → { tipo, casa, pino, circulo }
 let ativoId = null;
 const menosMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -47,6 +48,7 @@ export function criarMapa(elementoId, { aoSelecionar, aoMover }) {
   camadaAreas = L.layerGroup();
   mapa.addLayer(cluster);
 
+  carregarDistritos();
   mapa._aoSelecionar = aoSelecionar;
   mapa.on('zoomend', alternarAproximadas);
   if (aoMover) mapa.on('moveend', () => aoMover());
@@ -155,6 +157,32 @@ export function marcarAtivo(id) {
 function estilizar(item, ativo) {
   item.pino.setIcon(iconePino(item.casa, { ativo, aproximado: item.tipo === 'area' }));
   item.circulo?.setStyle({ weight: ativo ? 3 : 2, fillOpacity: ativo ? 0.3 : 0.18, dashArray: ativo ? null : '6 6' });
+}
+
+// Limites dos 5 distritos (IBGE), se o arquivo já foi gerado por `npm run distritos`.
+async function carregarDistritos() {
+  try {
+    const geo = await (await fetch('/data/distritos.geojson')).json();
+    if (!geo.features?.length) return;
+    camadaDistritos = L.geoJSON(geo, {
+      interactive: false,
+      style: { color: '#D4AF37', weight: 1.2, opacity: 0.45, dashArray: '4 6', fill: true, fillOpacity: 0 },
+    }).addTo(mapa);
+    camadaDistritos.bringToBack();
+  } catch { /* sem limites: o mapa funciona normalmente */ }
+}
+
+// Destaca o distrito escolhido no filtro (e enquadra o mapa nele).
+export function destacarDistrito(nome) {
+  if (!camadaDistritos) return false;
+  let alvo = null;
+  camadaDistritos.eachLayer((l) => {
+    const ativo = nome && l.feature.properties.distrito === nome;
+    l.setStyle(ativo ? { weight: 2.5, opacity: 0.9, dashArray: null, fillColor: '#D4AF37', fillOpacity: 0.06 } : { weight: 1.2, opacity: nome ? 0.2 : 0.45, dashArray: '4 6', fillOpacity: 0 });
+    if (ativo) alvo = l;
+  });
+  if (alvo) mapa.fitBounds(alvo.getBounds(), { padding: [30, 30], animate: !menosMovimento() });
+  return Boolean(alvo);
 }
 
 // Centro e área visível do mapa (para ordenar a lista e filtrar "nesta área").

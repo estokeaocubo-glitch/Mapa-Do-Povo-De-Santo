@@ -2,7 +2,7 @@
 # Sem terceiros em script/estilo/fonte: tudo é servido pelo próprio site.
 # 'unsafe-inline' em style-src é exigido pelo Leaflet (posiciona o mapa com style="").
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://*.basemaps.cartocdn.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://*.basemaps.cartocdn.com; connect-src 'self' https://*.basemaps.cartocdn.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
@@ -11,6 +11,9 @@
 
 /vendor/*
   Cache-Control: public, max-age=604800
+
+/sw.js
+  Cache-Control: no-cache
 
 /admin.html
   Cache-Control: no-store

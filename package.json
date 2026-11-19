@@ -16,7 +16,8 @@
     "db:migrar:local": "wrangler d1 migrations apply mapa-povo-de-santo --local",
     "db:migrar:remote": "wrangler d1 migrations apply mapa-povo-de-santo --remote",
     "db:local": "npm run db:migrar:local && node scripts/gerar-seed.mjs db/seed-ficticio.json db/gerado/seed-ficticio.sql && wrangler d1 execute mapa-povo-de-santo --local --file db/gerado/seed-ficticio.sql",
-    "db:seed-real:remote": "node scripts/gerar-seed.mjs db/seed-real.json db/gerado/seed-real.sql && wrangler d1 execute mapa-povo-de-santo --remote --file db/gerado/seed-real.sql"
+    "db:seed-real:remote": "node scripts/gerar-seed.mjs db/seed-real.json db/gerado/seed-real.sql && wrangler d1 execute mapa-povo-de-santo --remote --file db/gerado/seed-real.sql",
+    "distritos": "node scripts/baixar-distritos.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
